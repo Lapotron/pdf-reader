@@ -35,8 +35,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ["icon.svg", "apple-touch-icon.png", "sample.pdf"],
       manifest: {
-        name: "Mega Reader",
-        short_name: "Mega Reader",
+        name: "Simple Reader",
+        short_name: "Simple Reader",
         description: "PDF reader with natural neural text-to-speech, a floating reading line, smart text cleanup, library and annotations.",
         theme_color: "#1f2937",
         background_color: "#e9ecf1",

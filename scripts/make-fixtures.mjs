@@ -14,7 +14,7 @@ const fixedDate = new Date("2026-01-01T00:00:00Z");
 async function newDoc(title) {
   const doc = await PDFDocument.create();
   doc.setTitle(title);
-  doc.setAuthor("Mega Reader tests");
+  doc.setAuthor("Simple Reader tests");
   doc.setCreationDate(fixedDate);
   doc.setModificationDate(fixedDate);
   doc.setProducer("pdf-lib");
@@ -115,7 +115,7 @@ function wrap(text, font, size, maxWidth) {
 
 /** The sample document offered on first run (public/sample.pdf). */
 async function sample() {
-  const doc = await newDoc("Welcome to Mega Reader");
+  const doc = await newDoc("Welcome to Simple Reader");
   const font = await doc.embedFont(StandardFonts.TimesRoman);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const sans = await doc.embedFont(StandardFonts.Helvetica);
@@ -123,7 +123,7 @@ async function sample() {
   const width = W - 2 * margin;
   const pages = [
     {
-      title: "Welcome to Mega Reader",
+      title: "Welcome to Simple Reader",
       subtitle: "A PDF reader that reads to you, naturally.",
       sections: [
         ["Listening, not just reading", "Press the play button at the bottom of the screen, or double-click any sentence, and a natural neural voice starts reading from that exact word. The current sentence is highlighted, the spoken word is marked, and the page scrolls with the voice so you never lose your place."],
@@ -143,7 +143,7 @@ async function sample() {
   ];
   pages.forEach((pg, i) => {
     const page = doc.addPage([W, H]);
-    page.drawText("Mega Reader · Getting started", { x: margin, y: H - 40, size: 9, font: sans, color: rgb(0.45, 0.45, 0.45) });
+    page.drawText("Simple Reader · Getting started", { x: margin, y: H - 40, size: 9, font: sans, color: rgb(0.45, 0.45, 0.45) });
     page.drawText(String(i + 1), { x: W / 2 - 3, y: 36, size: 9, font: sans, color: rgb(0.45, 0.45, 0.45) });
     let y = H - 110;
     page.drawText(pg.title, { x: margin, y, size: 26, font: bold, color: rgb(0.1, 0.12, 0.18) });

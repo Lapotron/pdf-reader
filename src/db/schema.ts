@@ -106,7 +106,7 @@ export interface MetaRow {
   v: unknown;
 }
 
-export class MegaDB extends Dexie {
+export class ReaderDB extends Dexie {
   documents!: EntityTable<DocumentRow, "id">;
   files!: EntityTable<FileRow, "docId">;
   readingState!: EntityTable<ReadingStateRow, "docId">;
@@ -120,6 +120,7 @@ export class MegaDB extends Dexie {
   meta!: EntityTable<MetaRow, "k">;
   voices!: EntityTable<VoiceRow, "id">;
 
+  // Storage name kept from the app's former name so existing libraries are preserved.
   constructor(name = "mega-reader") {
     super(name);
     this.version(1).stores({
@@ -139,4 +140,4 @@ export class MegaDB extends Dexie {
   }
 }
 
-export const db = new MegaDB();
+export const db = new ReaderDB();

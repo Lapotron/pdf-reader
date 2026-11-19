@@ -81,7 +81,7 @@ export class ElevenLabsEngine implements TtsEngine {
    * Instant voice cloning: uploads the samples and returns the new voice id. Requires an
    * ElevenLabs plan with voice cloning and the speaker's consent.
    */
-  async cloneVoice(name: string, samples: Blob[], description = "Cloned in Mega Reader"): Promise<string> {
+  async cloneVoice(name: string, samples: Blob[], description = "Cloned in Simple Reader"): Promise<string> {
     const key = this.cfg().apiKey;
     if (!key) throw new Error("ElevenLabs API key missing — add it in Settings › Voice & engine.");
     const form = new FormData();

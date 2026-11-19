@@ -735,7 +735,7 @@ function ShortcutsTab() {
 function AboutTab() {
   return (
     <>
-      <Section title="Mega Reader">
+      <Section title="Simple Reader">
         <p className="text-sm text-muted">A PDF reader built around natural text-to-speech. Your documents, notes and settings stay in this browser.</p>
       </Section>
       <Section title="Third-party software">

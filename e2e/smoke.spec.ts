@@ -11,7 +11,7 @@ async function openFixture(page: Page, name: string, query = "engine=mock&mocksp
   await expect(page.locator('[data-testid="pdf-page"][data-rendered="1"]').first()).toBeVisible();
 }
 
-test.describe("Mega Reader", () => {
+test.describe("Simple Reader", () => {
   test("opens a PDF from the library and renders pages", async ({ page }) => {
     await openFixture(page, "columns.pdf");
     await expect(page.getByTestId("page-count")).toHaveText("/ 3");

@@ -29,7 +29,7 @@ export function ReaderView({ docId }: { docId: string }) {
   }, [docId]);
 
   useEffect(() => {
-    if (title) document.title = `${title} · Mega Reader`;
+    if (title) document.title = `${title} · Simple Reader`;
   }, [title]);
 
   return (

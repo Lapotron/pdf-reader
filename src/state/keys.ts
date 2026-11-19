@@ -15,7 +15,7 @@ export interface KeysState {
   clearAll(): void;
 }
 
-const LS = "mega.keys.v1";
+const LS = "mega.keys.v1"; // legacy key, kept so saved API keys survive the rename
 
 function load(): Pick<KeysState, "openai" | "elevenlabs" | "azure" | "remember"> {
   const empty = { openai: "", elevenlabs: "", azure: "", remember: false };

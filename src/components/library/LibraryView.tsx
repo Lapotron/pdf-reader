@@ -50,7 +50,7 @@ export function LibraryView() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    document.title = "Library · Mega Reader";
+    document.title = "Library · Simple Reader";
     navigator.storage?.estimate?.().then((e) => setUsage({ usage: e.usage ?? 0, quota: e.quota ?? 0 })).catch(() => {});
   }, [docs?.length]);
 
@@ -83,7 +83,7 @@ export function LibraryView() {
     try {
       const res = await fetch(`${import.meta.env.BASE_URL}sample.pdf`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const id = await importPdf(await res.blob(), "Welcome to Mega Reader.pdf");
+      const id = await importPdf(await res.blob(), "Welcome to Simple Reader.pdf");
       navigate({ name: "doc", id });
     } catch (e) {
       toast(`Could not load the sample: ${(e as Error).message}`, "error");
@@ -114,7 +114,7 @@ export function LibraryView() {
     >
       <header className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2.5 sm:px-6">
         <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-8 w-8 rounded-lg" />
-        <h1 className="text-lg font-semibold tracking-tight">Mega Reader</h1>
+        <h1 className="text-lg font-semibold tracking-tight">Simple Reader</h1>
         <div className="ml-auto flex items-center gap-2">
           <div className="relative hidden sm:block">
             <Search size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />

@@ -12,7 +12,7 @@ export async function initPwa(): Promise<void> {
       const { registerSW } = await import("virtual:pwa-register");
       const update = registerSW({
         onNeedRefresh: () => usePwa.setState({ needRefresh: true }),
-        onOfflineReady: () => toast("Mega Reader is ready to work offline."),
+        onOfflineReady: () => toast("Simple Reader is ready to work offline."),
       });
       usePwa.setState({ update: () => update(true) });
     } catch (e) {

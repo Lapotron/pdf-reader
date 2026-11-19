@@ -1,5 +1,5 @@
 {
-  "name": "mega-reader",
+  "name": "simple-reader",
   "private": true,
   "version": "0.1.0",
   "description": "PDF reader with natural neural text-to-speech, reading line, smart cleanup, library and annotations.",

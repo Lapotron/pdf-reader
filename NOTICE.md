@@ -1,6 +1,6 @@
 # Third-party notices
 
-Mega Reader's own source code is licensed under the MIT License (see `LICENSE`).
+Simple Reader's own source code is licensed under the MIT License (see `LICENSE`).
 The built application bundles or downloads the following third-party components:
 
 | Component | Use | License |

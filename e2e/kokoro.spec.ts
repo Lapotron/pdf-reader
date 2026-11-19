@@ -10,6 +10,6 @@ test("reads the sample with real Kokoro voices @slow", async ({ page }) => {
   await page.getByTestId("play-button").click();
   await expect(page.getByTestId("player-bar")).toHaveAttribute("data-state", "playing", { timeout: 240_000 });
   await expect(page.getByTestId("engine-status")).toHaveAttribute("data-state", "ready");
-  await expect(page.getByTestId("now-reading")).toHaveText("Welcome to Mega Reader");
+  await expect(page.getByTestId("now-reading")).toHaveText("Welcome to Simple Reader");
   await expect(page.getByTestId("word-hl")).toBeVisible();
 });

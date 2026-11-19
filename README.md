@@ -1,4 +1,4 @@
-# Mega Reader
+# Simple Reader
 
 A PDF reader that reads to you with **natural neural voices** instead of the browser's robotic
 built-in speech, plus a **floating reading line** that keeps your eyes on the line being spoken.

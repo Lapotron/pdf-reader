@@ -22,7 +22,7 @@ export function bindMediaSession(player: Player, title: () => string, onPlay: ()
     ms.playbackState = s === "playing" || s === "buffering" ? "playing" : s === "paused" ? "paused" : "none";
     if (s === "playing" || s === "loading") {
       try {
-        ms.metadata = new MediaMetadata({ title: title() || "Document", artist: "Mega Reader", album: "Read aloud" });
+        ms.metadata = new MediaMetadata({ title: title() || "Document", artist: "Simple Reader", album: "Read aloud" });
       } catch {
         /* MediaMetadata unsupported */
       }

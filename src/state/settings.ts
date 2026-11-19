@@ -166,7 +166,7 @@ export const useSettings = create<SettingsState>()(
         set(() => (section ? ({ [section]: structuredClone(DEFAULTS[section]) } as Partial<SettingsState>) : structuredClone(DEFAULTS))),
     }),
     {
-      name: "mega.settings.v1",
+      name: "mega.settings.v1", // legacy key, kept so saved settings survive the rename
       version: 1,
       // Deep-merge sections so new settings get defaults after upgrades.
       merge: (persisted, current) => {

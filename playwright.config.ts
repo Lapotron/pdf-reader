@@ -11,14 +11,14 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   grepInvert: process.env.RUN_SLOW ? undefined : /@slow/,
   use: {
-    baseURL: `http://localhost:${PORT}/Mega/`,
+    baseURL: `http://localhost:${PORT}/pdf-reader/`,
     trace: "off",
     launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `VITE_BASE=/Mega/ npm run build && npx vite preview --port ${PORT} --strictPort --base /Mega/`,
-    url: `http://localhost:${PORT}/Mega/`,
+    command: `VITE_BASE=/pdf-reader/ npm run build && npx vite preview --port ${PORT} --strictPort --base /pdf-reader/`,
+    url: `http://localhost:${PORT}/pdf-reader/`,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
   },
