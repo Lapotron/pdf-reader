@@ -66,6 +66,8 @@ export interface AppearanceSettings {
 
 export interface UiSettings {
   sidebarOpen: boolean;
+  /** Reader sidebar width in CSS px (desktop). */
+  sidebarWidth: number;
   sidebarTab: "library" | "outline" | "thumbnails" | "bookmarks" | "annotations" | "search";
   zoomMode: "fit-width" | "fit-page" | "custom";
   zoom: number;
@@ -144,7 +146,7 @@ export const DEFAULTS = {
     azureRegion: "eastus",
     previewText: "Reading aloud makes long documents easier to follow. This is how I sound.",
   } as TtsSettings,
-  ui: { sidebarOpen: true, sidebarTab: "outline", zoomMode: "fit-width", zoom: 1, debug: false } as UiSettings,
+  ui: { sidebarOpen: true, sidebarWidth: 288, sidebarTab: "outline", zoomMode: "fit-width", zoom: 1, debug: false } as UiSettings,
 };
 
 export const useSettings = create<SettingsState>()(

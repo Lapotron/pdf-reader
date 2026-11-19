@@ -176,3 +176,26 @@ test("Settings section list stays in place while the content scrolls", async ({ 
   await nav.getByRole("button", { name: "Reading line" }).click();
   expect(await page.getByTestId("settings-content").evaluate((el) => el.scrollTop)).toBe(0);
 });
+
+test("reader sidebar can be resized by dragging and keeps its width", async ({ page }) => {
+  await openFixture(page, "simple.pdf");
+  const sidebar = page.getByTestId("sidebar");
+  const before = (await sidebar.boundingBox())!.width;
+  const handle = page.getByRole("separator", { name: "Resize sidebar" });
+  const h = (await handle.boundingBox())!;
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2 + 60, h.y + h.height / 2, { steps: 4 });
+  await page.mouse.move(h.x + h.width / 2 + 120, h.y + h.height / 2, { steps: 4 });
+  await page.mouse.up();
+  const after = (await sidebar.boundingBox())!.width;
+  expect(Math.abs(after - before - 120)).toBeLessThanOrEqual(3);
+  // Pages are laid out again for the new width once the drag ends.
+  await expect(page.locator('[data-testid="pdf-page"][data-rendered="1"]').first()).toBeVisible();
+  await page.reload();
+  await expect(page.locator('[data-testid="pdf-page"][data-rendered="1"]').first()).toBeVisible();
+  expect(Math.abs((await page.getByTestId("sidebar").boundingBox())!.width - after)).toBeLessThanOrEqual(1);
+  // Double-click resets to the default width.
+  await page.getByRole("separator", { name: "Resize sidebar" }).dblclick();
+  await expect.poll(async () => Math.round((await page.getByTestId("sidebar").boundingBox())!.width)).toBe(288);
+});

@@ -43,10 +43,17 @@ export function DocumentView() {
   useLayoutEffect(() => {
     const el = container.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setVp({ w: el.clientWidth, h: el.clientHeight }));
+    const measure = () => setVp({ w: el.clientWidth, h: el.clientHeight });
+    // While the sidebar is being dragged, skip relayout (fit-width would re-render every page on
+    // every pixel); measure once when the drag ends.
+    const ro = new ResizeObserver(() => !useUi.getState().resizingSidebar && measure());
     ro.observe(el);
-    setVp({ w: el.clientWidth, h: el.clientHeight });
-    return () => ro.disconnect();
+    measure();
+    const unsub = useUi.subscribe((s, p) => p.resizingSidebar && !s.resizingSidebar && measure());
+    return () => {
+      ro.disconnect();
+      unsub();
+    };
   }, []);
 
   const scale = useMemo(() => fitScale(zoomMode, zoom, sizes, vp.w, vp.h, PDF_TO_CSS), [zoomMode, zoom, sizes, vp.w, vp.h]);
