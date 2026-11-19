@@ -8,6 +8,7 @@ import { useToasts, toast } from "./toast";
 import { cx } from "../components/ui";
 import { audioCache } from "../tts/audioCache";
 import { usePwa } from "./pwa";
+import { PageColorFilters } from "../components/reader/pageColorsUi";
 
 function UpdateBanner() {
   const need = usePwa((s) => s.needRefresh);
@@ -77,6 +78,7 @@ export function App() {
       {route.name === "doc" ? <ReaderView key={route.id} docId={route.id} /> : <LibraryView />}
       <Toasts />
       <UpdateBanner />
+      <PageColorFilters />
     </>
   );
 }

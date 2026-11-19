@@ -7,6 +7,7 @@ import { union } from "../../lib/geom";
 import type { Rect } from "../../pdf/types";
 import type { DocLayout } from "./layout";
 import { hexToRgba } from "./PageView";
+import { usePageColors } from "./pageColorsUi";
 
 export interface RulerTarget {
   page: number;
@@ -43,6 +44,7 @@ export function rulerTargetFromPlayer(r: RulerSettings): RulerTarget | null {
  */
 export function RulerLayer({ layout, scale }: { layout: DocLayout; scale: number }) {
   const ruler = useSettings((s) => s.ruler);
+  const { dark } = usePageColors();
   const el = useRef<HTMLDivElement>(null);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -98,14 +100,17 @@ export function RulerLayer({ layout, scale }: { layout: DocLayout; scale: number
   }, [ruler, scale, layout]);
 
   const mask = ruler.mask || ruler.mode === "window";
-  const maskShadow = mask ? `0 0 0 200vmax ${hexToRgba(ruler.maskColor, ruler.maskOpacity)}` : "none";
+  // On dark paper the usual dimming barely shows: dim with black, a little stronger.
+  const maskFill = dark ? `rgba(0, 0, 0, ${Math.min(0.9, ruler.maskOpacity + 0.2)})` : hexToRgba(ruler.maskColor, ruler.maskOpacity);
+  const maskShadow = mask ? `0 0 0 200vmax ${maskFill}` : "none";
   const style: React.CSSProperties = {
     opacity: 0,
     transition: `transform ${ruler.animationMs}ms ease-out, width ${ruler.animationMs}ms ease-out, height ${ruler.animationMs}ms ease-out, opacity 150ms`,
     borderRadius: ruler.mode === "underline" ? 2 : 6,
     background: ruler.mode === "band" ? hexToRgba(ruler.color, ruler.opacity) : ruler.mode === "underline" ? ruler.color : "transparent",
     boxShadow: ruler.mode === "window" ? `${maskShadow}, inset 0 0 0 1.5px ${hexToRgba(ruler.color, 0.7)}` : maskShadow,
-    mixBlendMode: ruler.mode === "band" && !mask ? "multiply" : undefined,
+    // multiply disappears on dark paper; screen gives a soft glow there instead.
+    mixBlendMode: ruler.mode === "band" && !mask ? (dark ? "screen" : "multiply") : undefined,
   };
   return <div ref={el} className="ruler" data-testid="reading-ruler" aria-hidden style={style} />;
 }

@@ -15,8 +15,6 @@
   --accent-contrast: #ffffff;
   --danger: #dc2626;
   --page-shadow: 0 1px 3px rgb(15 23 42 / 0.12), 0 8px 24px rgb(15 23 42 / 0.08);
-  --hl-blend: multiply;
-  --page-filter: none;
   color-scheme: light;
 }
 
@@ -32,8 +30,6 @@
   --accent-contrast: #0b1220;
   --danger: #f87171;
   --page-shadow: 0 1px 3px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.35);
-  --hl-blend: normal;
-  --page-filter: invert(0.88) hue-rotate(180deg);
   color-scheme: dark;
 }
 
@@ -49,8 +45,6 @@
   --accent-contrast: #fffaf0;
   --danger: #b42318;
   --page-shadow: 0 1px 3px rgb(80 60 20 / 0.18), 0 8px 24px rgb(80 60 20 / 0.12);
-  --hl-blend: multiply;
-  --page-filter: sepia(0.35) saturate(0.9);
   color-scheme: light;
 }
 
@@ -95,7 +89,8 @@ body {
 /* ---- PDF pages ---- */
 .pdf-page {
   position: absolute;
-  background: #fff;
+  /* Paper color of the active page color set: no white flash before a page renders. */
+  background: var(--page-paper, #fff);
   box-shadow: var(--page-shadow);
   --scale-round-x: 1px;
   --scale-round-y: 1px;
@@ -108,10 +103,8 @@ body {
   width: 100%;
   height: 100%;
   display: block;
-}
-
-.tinted .pdf-page canvas {
-  filter: var(--page-filter);
+  /* Recoloring for the page color set (SVG filter, GPU-accelerated). */
+  filter: var(--page-filter, none);
 }
 
 .overlay {
@@ -123,11 +116,14 @@ body {
 .hl {
   position: absolute;
   border-radius: 2px;
-  mix-blend-mode: var(--hl-blend);
+  mix-blend-mode: multiply;
 }
 
-[data-theme="dark"] .hl {
-  opacity: 0.55;
+/* On dark paper, multiply would hide highlights and screen would wash text out:
+   use a translucent tint instead, so light text stays readable inside it. */
+.page-dark .hl {
+  mix-blend-mode: normal;
+  opacity: 0.5;
 }
 
 .word-hl {
@@ -135,13 +131,16 @@ body {
   left: 0;
   top: 0;
   border-radius: 3px;
-  mix-blend-mode: var(--hl-blend);
+  mix-blend-mode: multiply;
   will-change: transform, width;
   transition: transform 90ms linear, width 90ms linear;
 }
 
-[data-theme="dark"] .word-hl {
-  opacity: 0.6;
+.page-dark .word-hl {
+  mix-blend-mode: normal;
+  opacity: 0.8;
+  /* A ring keeps the spoken word easy to spot on dark paper. */
+  box-shadow: 0 0 0 1.5px currentColor;
 }
 
 .ruler {

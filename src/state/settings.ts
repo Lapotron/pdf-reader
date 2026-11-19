@@ -61,7 +61,9 @@ export interface TtsSettings {
 
 export interface AppearanceSettings {
   theme: Theme;
-  pageTint: boolean;
+  /** "auto" (follow the app theme) or a page color set id (src/pdf/pageColors.ts). */
+  pageColors: string;
+  pageImages: "keep" | "duotone";
 }
 
 export interface UiSettings {
@@ -97,7 +99,7 @@ export const DEFAULT_VOICES: Record<EngineId, string> = {
 };
 
 export const DEFAULTS = {
-  appearance: { theme: "system", pageTint: false } as AppearanceSettings,
+  appearance: { theme: "system", pageColors: "auto", pageImages: "keep" } as AppearanceSettings,
   reading: {
     sentenceStyle: "fill",
     sentenceColor: "#fde68a",
@@ -170,6 +172,7 @@ export const useSettings = create<SettingsState>()(
           (out as unknown as Record<string, unknown>)[k] = { ...current[k], ...(p[k] ?? {}) };
         }
         out.tts.voices = { ...DEFAULT_VOICES, ...(p.tts?.voices ?? {}) };
+        delete (out.appearance as unknown as Record<string, unknown>).pageTint; // replaced by pageColors
         // Shorter sample sentence (faster previews); keep texts the user customized.
         if (out.tts.previewText === OLD_PREVIEW_TEXT) out.tts.previewText = DEFAULTS.tts.previewText;
         return out;

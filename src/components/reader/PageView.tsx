@@ -89,7 +89,7 @@ function SyncOverlay({ page, scale, ready }: { page: number; scale: number; read
           />
         ))}
       {wordStyle !== "off" &&
-        [w1, w2].map((ref, i) => <div key={i} ref={ref} className="word-hl" data-testid={i === 0 ? "word-hl" : undefined} style={{ display: "none", background: hexToRgba(wordColor, wordStyle === "fill" ? 0.5 : 1) }} />)}
+        [w1, w2].map((ref, i) => <div key={i} ref={ref} className="word-hl" data-testid={i === 0 ? "word-hl" : undefined} style={{ display: "none", color: wordColor, background: hexToRgba(wordColor, wordStyle === "fill" ? 0.5 : 1) }} />)}
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CircleHelp, Library, Minus, Moon, PanelLeft, Plus, Search, Settings, Sun, Coffee, Monitor, Focus, Rows3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleHelp, Library, Minus, Moon, PanelLeft, Plus, Search, Settings, Sun, Coffee, Monitor, Focus, Rows3, Palette } from "lucide-react";
 import { navigate } from "../../app/useHashRoute";
 import * as A from "../../app/actions";
 import { PDF_TO_CSS } from "../../pdf/pdfjs";
 import { useReader } from "../../state/reader";
 import { useSettings } from "../../state/settings";
 import { useUi, openSettings } from "../../state/ui";
-import { IconButton } from "../ui";
+import { IconButton, Popover } from "../ui";
+import { PageColorPicker } from "../reader/pageColorsUi";
 
 function PageInput() {
   const current = useReader((s) => s.currentPage);
@@ -113,6 +114,19 @@ export function TopBar() {
       <IconButton label="Focus mask (M)" className="max-sm:hidden" active={ruler.enabled && ruler.mask} onClick={A.toggleMask}>
         <Focus size={18} />
       </IconButton>
+      <Popover
+        label="Page colors"
+        width={320}
+        side="bottom"
+        align="end"
+        trigger={(open, toggle) => (
+          <IconButton label="Page colors" className="max-sm:hidden" active={open} onClick={toggle} data-testid="page-colors-button">
+            <Palette size={18} />
+          </IconButton>
+        )}
+      >
+        <PageColorPicker />
+      </Popover>
       <IconButton label={`Theme: ${theme}`} className="max-sm:hidden" onClick={A.cycleTheme}>
         <ThemeIcon size={18} />
       </IconButton>

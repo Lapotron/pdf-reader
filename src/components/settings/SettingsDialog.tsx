@@ -25,6 +25,7 @@ import type { EngineId } from "../../tts/types";
 import { Button, ColorInput, Dialog, Kbd, ProgressBar, Section, Segmented, Select, Slider, TextInput, Toggle, cx } from "../ui";
 import { VoiceList } from "../layout/PlayerBar";
 import { hexToRgba } from "../reader/PageView";
+import { PageColorPicker } from "../reader/pageColorsUi";
 
 const TABS = [
   { id: "voice", label: "Voice & engine" },
@@ -619,7 +620,11 @@ function AppearanceTab() {
         <span className="text-sm">Color theme</span>
         <Segmented label="Theme" value={a.theme} onChange={(v) => set({ theme: v })} options={[{ value: "light", label: "Light" }, { value: "sepia", label: "Sepia" }, { value: "dark", label: "Dark" }, { value: "system", label: "System" }]} />
       </div>
-      <Toggle checked={a.pageTint} onChange={(v) => set({ pageTint: v })} label="Tint PDF pages to match the theme" description="Dark mode inverts page colors; sepia warms them." />
+      <div className="mt-3">
+        <p className="mb-2 text-sm">PDF page colors</p>
+        <p className="mb-2 text-xs text-muted">Recolors the pages themselves. "Auto" uses Soft dark in the dark theme and Sepia paper in the sepia theme. Every set keeps at least 7:1 text contrast.</p>
+        <PageColorPicker />
+      </div>
     </Section>
   );
 }

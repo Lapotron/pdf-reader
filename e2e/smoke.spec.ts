@@ -214,3 +214,18 @@ test("voice preview shows its state and can be stopped", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Stop preview of Tone B" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview Tone B" })).toHaveAttribute("data-phase", "idle", { timeout: 15_000 });
 });
+
+test("dark theme recolors PDF pages and the color set can be changed", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await openFixture(page, "simple.pdf");
+  const canvasFilter = () => page.locator(".pdf-page canvas").first().evaluate((el) => getComputedStyle(el).filter);
+  const paper = () => page.locator(".pdf-page").first().evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await canvasFilter()).toContain("pc-soft-dark");
+  expect(await paper()).toBe("rgb(30, 31, 34)");
+  await page.getByTestId("page-colors-button").click();
+  await page.getByTestId("page-colors-oled").click();
+  expect(await canvasFilter()).toContain("pc-oled-keep");
+  expect(await paper()).toBe("rgb(0, 0, 0)");
+  await page.getByTestId("page-colors-original").click();
+  expect(await canvasFilter()).toBe("none");
+});

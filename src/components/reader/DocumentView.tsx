@@ -14,6 +14,7 @@ import { computeLayout, fitScale, pageAtY, type DocLayout } from "./layout";
 import { PageView } from "./PageView";
 import { RulerLayer, rulerTargetFromPlayer } from "./RulerLayer";
 import { SelectionMenu } from "./SelectionMenu";
+import { usePageColors } from "./pageColorsUi";
 import { cx } from "../ui";
 
 const NO_ANNOTATIONS: AnnotationRow[] = [];
@@ -27,7 +28,7 @@ export function DocumentView() {
   const followMode = useSettings((s) => s.reading.followMode);
   const clickToRead = useSettings((s) => s.reading.clickToRead);
   const ruler = useSettings((s) => s.ruler);
-  const pageTint = useSettings((s) => s.appearance.pageTint);
+  const pageColors = usePageColors();
   const followPaused = useUi((s) => s.followPaused);
   const playerState = usePlayer((s) => s.state);
   const showBack = followPaused && (playerState === "playing" || playerState === "buffering" || playerState === "loading" || playerState === "paused");
@@ -296,7 +297,9 @@ export function DocumentView() {
     <div className="relative h-full min-w-0 flex-1">
       <div
         ref={container}
-        className={cx("isolate h-full overflow-auto bg-bg", pageTint && "tinted")}
+        className={cx("isolate h-full overflow-auto bg-bg", pageColors.dark && "page-dark")}
+        style={{ ["--page-filter" as string]: pageColors.filter, ["--page-paper" as string]: pageColors.set.paper }}
+        data-page-colors={pageColors.set.id}
         onScroll={onScroll}
         onWheel={(e) => !e.ctrlKey && !e.metaKey && pauseFollow()}
         onTouchMove={pauseFollow}

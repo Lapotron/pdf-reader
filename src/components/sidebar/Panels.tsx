@@ -10,6 +10,7 @@ import { saveBlob, safeFileName } from "../../lib/download";
 import { buildDisplay } from "../../text/cleanup";
 import { requestScroll, useReader } from "../../state/reader";
 import { resumeFollow } from "../../state/ui";
+import { usePageColors } from "../reader/pageColorsUi";
 import { Button, IconButton, ProgressBar, cx } from "../ui";
 
 export function OutlinePanel() {
@@ -42,7 +43,7 @@ export function OutlinePanel() {
   );
 }
 
-function Thumbnail({ page, active }: { page: number; active: boolean }) {
+function Thumbnail({ page, active, filter, paper }: { page: number; active: boolean; filter: string; paper: string }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -86,8 +87,8 @@ function Thumbnail({ page, active }: { page: number; active: boolean }) {
   const size = useReader((s) => s.sizes[page - 1]);
   return (
     <button ref={ref} onClick={() => requestScroll(page)} className="flex w-full flex-col items-center gap-1 py-2" aria-label={`Page ${page}`}>
-      <div className={cx("w-[140px] overflow-hidden rounded border bg-white shadow-sm", active ? "border-accent ring-2 ring-accent" : "border-line")} style={{ aspectRatio: size ? `${size.w} / ${size.h}` : "3 / 4" }}>
-        {url && <img src={url} alt="" className="h-full w-full" />}
+      <div className={cx("w-[140px] overflow-hidden rounded border shadow-sm", active ? "border-accent ring-2 ring-accent" : "border-line")} style={{ aspectRatio: size ? `${size.w} / ${size.h}` : "3 / 4", background: paper }}>
+        {url && <img src={url} alt="" className="h-full w-full" style={{ filter }} />}
       </div>
       <span className={cx("text-xs tabular-nums", active ? "text-accent" : "text-muted")}>{page}</span>
     </button>
@@ -97,10 +98,11 @@ function Thumbnail({ page, active }: { page: number; active: boolean }) {
 export function ThumbnailsPanel() {
   const n = useReader((s) => s.numPages);
   const current = useReader((s) => s.currentPage);
+  const colors = usePageColors();
   return (
     <div className="py-1">
       {Array.from({ length: n }, (_, i) => (
-        <Thumbnail key={i} page={i + 1} active={current === i + 1} />
+        <Thumbnail key={i} page={i + 1} active={current === i + 1} filter={colors.filter} paper={colors.set.paper} />
       ))}
     </div>
   );
