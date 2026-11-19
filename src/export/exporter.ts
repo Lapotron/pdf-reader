@@ -1,5 +1,4 @@
 import { sha256Hex } from "../lib/hash";
-import { pageOf } from "../pdf/types";
 import type { ReadingModel } from "../text/readingModel";
 import { chunkSentence } from "../text/segment";
 import type { AudioCache } from "../tts/audioCache";
@@ -59,7 +58,8 @@ export async function exportRange(
         pcm = hit.pcm;
         sr = hit.sampleRate;
       } else {
-        const r = await engine.synthesize({ text, voice: prefs.voice, speed: synthSpeed, signal, priority: 0 });
+        // Low priority so live playback (priority = queue index) is served first.
+        const r = await engine.synthesize({ text, voice: prefs.voice, speed: synthSpeed, signal, priority: 1e6 + done });
         pcm = prefs.trimSilence ? trimSilence(r.pcm, r.sampleRate).pcm : r.pcm;
         if (prefs.normalize) pcm = normalizeLoudness(pcm);
         sr = r.sampleRate;
@@ -85,6 +85,5 @@ export async function exportRange(
     else if (cues.length) cues[cues.length - 1].end = end;
     o += Math.round(p.pauseAfter * sampleRate);
   }
-  void pageOf;
   return { pcm: out, sampleRate, cues };
 }

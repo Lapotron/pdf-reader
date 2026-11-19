@@ -42,6 +42,7 @@ export class AudioCache {
   async put(key: string, a: CachedAudio, docId?: string): Promise<void> {
     if (!this.enabled) return;
     try {
+      await this.totalBytes(); // initialize the running total before writing (avoids double counting)
       const pcm = floatToInt16(a.pcm).buffer as ArrayBuffer;
       const row: AudioCacheRow = { key, pcm, sampleRate: a.sampleRate, timings: a.timings, timingSource: a.timingSource, bytes: pcm.byteLength, lastUsed: Date.now(), docId };
       const prev = await db.audioCache.get(key);

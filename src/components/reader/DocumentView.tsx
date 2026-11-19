@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useLiveQuery } from "dexie-react-hooks";
 import { LocateFixed } from "lucide-react";
 import { getSession, player } from "../../app/session";
-import { db } from "../../db/schema";
+import { db, type AnnotationRow } from "../../db/schema";
 import { PDF_TO_CSS } from "../../pdf/pdfjs";
 import { srcPos } from "../../pdf/types";
 import { usePlayer } from "../../state/player";
@@ -17,6 +17,7 @@ import { SelectionMenu } from "./SelectionMenu";
 import { cx } from "../ui";
 
 const USER_SCROLL_HOLD = 4000;
+const NO_ANNOTATIONS: AnnotationRow[] = [];
 
 export function DocumentView() {
   const sizes = useReader((s) => s.sizes);
@@ -33,7 +34,7 @@ export function DocumentView() {
   const [range, setRange] = useState({ first: 0, last: 2 });
   const programmaticUntil = useRef(0);
 
-  const annotations = useLiveQuery(() => (docId ? db.annotations.where("docId").equals(docId).toArray() : []), [docId]) ?? [];
+  const annotations = useLiveQuery(() => (docId ? db.annotations.where("docId").equals(docId).toArray() : NO_ANNOTATIONS), [docId]) ?? NO_ANNOTATIONS;
 
   // Viewport size.
   useLayoutEffect(() => {

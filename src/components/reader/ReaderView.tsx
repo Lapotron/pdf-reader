@@ -23,6 +23,7 @@ export function ReaderView({ docId }: { docId: string }) {
   useShortcuts();
 
   useEffect(() => {
+    if (window.innerWidth < 768) useSettings.getState().set("ui", { sidebarOpen: false });
     void openDocument(docId);
     return () => closeDocument();
   }, [docId]);

@@ -14,6 +14,7 @@ import { audioCache } from "../tts/audioCache";
 import { WebAudioSink } from "../tts/audioSink";
 import { Player, type PlaybackPrefs, type PlayerPosition } from "../tts/player";
 import { activeEngine, selectedEngineId } from "../tts/registry";
+import { bindMediaSession } from "../tts/mediaSession";
 import type { EngineId } from "../tts/types";
 
 export interface DocSession {
@@ -89,6 +90,28 @@ player.on("position", (p) => {
   if (p && (!prev || prev.sentenceId !== p.sentence.id)) scheduleSave();
 });
 player.on("error", (e) => usePlayer.setState({ error: e.message }));
+let slowNoticeShown = false;
+usePlayer.subscribe((s) => {
+  const st = s.engineStatus;
+  if (!slowNoticeShown && st.state === "ready" && st.rtf && st.rtf > 1.25) {
+    slowNoticeShown = true;
+    usePlayer.setState({
+      notice:
+        st.device === "wasm"
+          ? "This device generates speech slower than real time on the CPU, so there may be short pauses. Chrome or Edge with WebGPU, or a cloud voice, plays smoothly."
+          : "Speech is generating slower than real time; there may be short pauses between sentences.",
+    });
+  }
+});
+
+bindMediaSession(
+  player,
+  () => session?.title ?? "",
+  () => {
+    if (player.state === "paused") player.resume();
+    else void player.play(undefined, useReader.getState().currentPage);
+  },
+);
 
 // Release the Kokoro/engine status when tab closes is automatic; persist position on hide.
 if (typeof document !== "undefined") {

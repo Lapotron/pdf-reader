@@ -32,7 +32,14 @@ export function Sidebar() {
           </button>
         ))}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto" role="tabpanel">
+      <div
+        className="min-h-0 flex-1 overflow-auto"
+        role="tabpanel"
+        onClickCapture={(e) => {
+          // On phones the sidebar overlays the page: close it after navigating.
+          if (window.innerWidth < 768 && (e.target as HTMLElement).closest("li button")) setTimeout(() => useSettings.getState().set("ui", { sidebarOpen: false }), 0);
+        }}
+      >
         <h2 className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">{TABS.find((t) => t.id === tab)?.label}</h2>
         {tab === "outline" && <OutlinePanel />}
         {tab === "thumbnails" && <ThumbnailsPanel />}

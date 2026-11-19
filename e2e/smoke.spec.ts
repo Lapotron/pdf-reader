@@ -109,3 +109,21 @@ test.describe("Mega Reader", () => {
     expect(buf.length).toBeGreaterThan(10_000);
   });
 });
+
+test("works offline after the first visit (PWA)", async ({ page, context }) => {
+  await openFixture(page, "simple.pdf");
+  // Wait for the service worker to take control.
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  // Warm the runtime cache for pdf.js assets by rendering once more.
+  await expect(page.locator('[data-testid="pdf-page"][data-rendered="1"]').first()).toBeVisible();
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.locator('[data-testid="pdf-page"][data-rendered="1"]').first()).toBeVisible();
+  await page.getByTestId("play-button").click();
+  await expect(page.getByTestId("now-reading")).toHaveText("The quick brown fox jumps over the lazy dog.");
+  await context.setOffline(false);
+});

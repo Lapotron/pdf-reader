@@ -11,7 +11,8 @@ let seq = 0;
 /** Plays a short sample of a voice (pauses the reader first). */
 export async function previewVoice(engineId: EngineId, voice: string, text = getSettings().tts.previewText): Promise<void> {
   const id = ++seq;
-  if (player.state === "playing" || player.state === "buffering") player.pause();
+  // Pausing suspends the shared audio clock; stop the reader so the preview can't resume it.
+  if (player.isActive) player.stop();
   current?.stop();
   current = null;
   const e = getEngine(engineId);

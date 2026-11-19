@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { AlertTriangle, Download, Plus, Trash2, Upload, Volume2 } from "lucide-react";
 import { getSession, refreshTextOptions, player } from "../../app/session";
 import { previewVoice } from "../../app/preview";
+import { prepareKokoroOffline } from "../../app/offline";
 import { toast } from "../../app/toast";
 import { applyPlaybackChange } from "../../app/actions";
 import { SHORTCUTS } from "../../app/shortcuts";
@@ -116,7 +117,35 @@ function KokoroSettings() {
         </p>
       )}
       {status.state === "error" && active === "kokoro" && <p className="py-1 text-xs text-danger">{status.error}</p>}
+      <OfflineButton />
     </>
+  );
+}
+
+function OfflineButton() {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="mt-2">
+      <Button
+        size="sm"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await prepareKokoroOffline();
+            usePlayer.setState({ activeEngine: "kokoro" });
+            toast("Kokoro and your voice are downloaded — reading works offline now.", "success", 6000);
+          } catch (e) {
+            toast(`Download failed: ${(e as Error).message}`, "error", 7000);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <Download size={15} /> {busy ? "Downloading…" : "Download for offline use"}
+      </Button>
+      <p className="mt-1 text-xs text-muted">Fetches the model and the selected voice now, so the first play is instant and works without internet.</p>
+    </div>
   );
 }
 

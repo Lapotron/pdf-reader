@@ -228,6 +228,12 @@ function EngineChip() {
         <AlertTriangle size={14} /> Engine error
       </span>
     );
+  } else if (st.state === "ready" && st.rtf && st.rtf > 1.1) {
+    content = (
+      <span className="flex items-center gap-1.5 text-xs text-amber-600" title={`Generating at ${(1 / st.rtf).toFixed(1)}× real time. Use WebGPU (Chrome/Edge), a lighter precision, or a cloud voice for smooth playback.`}>
+        <AlertTriangle size={14} /> Slow device
+      </span>
+    );
   } else if (st.state === "ready") {
     content = (
       <span className="flex items-center gap-1.5 text-xs text-muted" title={label}>
@@ -311,17 +317,21 @@ export function PlayerBar() {
         </IconButton>
       </div>
       <div className="min-w-0 flex-1 px-2">
-        <Position />
+        <div className="max-sm:hidden">
+          <Position />
+        </div>
       </div>
       <div className="flex items-center gap-0.5">
         <EngineChip />
         <SpeedControl />
         <VoiceControl />
-        <VolumeControl />
-        <SleepControl />
-        <IconButton label="Export audio" onClick={() => useUi.setState({ exportOpen: true })} data-testid="export-button">
-          <Download size={18} />
-        </IconButton>
+        <span className="flex items-center gap-0.5 max-sm:hidden">
+          <VolumeControl />
+          <SleepControl />
+          <IconButton label="Export audio" onClick={() => useUi.setState({ exportOpen: true })} data-testid="export-button">
+            <Download size={18} />
+          </IconButton>
+        </span>
       </div>
     </footer>
   );

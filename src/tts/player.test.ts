@@ -60,6 +60,14 @@ class FakeSink implements AudioSink {
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+async function waitFor(cond: () => boolean, ms = 2000) {
+  const t0 = Date.now();
+  while (!cond()) {
+    if (Date.now() - t0 > ms) throw new Error("waitFor timed out");
+    await flush();
+  }
+}
+
 /** One page, plain left-aligned lines, synthetic items. */
 function provider(lines: string[][]): PageTextProvider {
   const pages = lines.map((pageLines, pi) => {
@@ -144,6 +152,7 @@ describe("Player", () => {
 
   it("next() jumps while playing and cancels stale audio", async () => {
     await player.play();
+    await waitFor(() => sink.scheduled.length > 0);
     await sink.advance(0.1);
     player.tick();
     expect(player.position?.sentence.text).toBe("First sentence here.");
@@ -156,6 +165,7 @@ describe("Player", () => {
 
   it("pause and resume suspend the audio clock", async () => {
     await player.play();
+    await waitFor(() => sink.scheduled.length > 0);
     await sink.advance(0.1);
     player.pause();
     expect(player.state).toBe("paused");
@@ -185,7 +195,7 @@ describe("Player", () => {
     player = new Player({ sink, cache: null, getEngine: async () => engine, prefs: () => fast });
     player.setModel(new ReadingModel(provider([["One sentence only."]]), DEFAULT_CLEANUP));
     await player.play();
-    await sink.advance(0.05);
+    await waitFor(() => sink.scheduled.length > 0);
     expect(sink.scheduled[0].rate).toBeCloseTo(1.1);
   });
 });

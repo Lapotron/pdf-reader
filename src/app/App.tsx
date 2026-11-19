@@ -7,6 +7,24 @@ import { ReaderView } from "../components/reader/ReaderView";
 import { useToasts, toast } from "./toast";
 import { cx } from "../components/ui";
 import { audioCache } from "../tts/audioCache";
+import { usePwa } from "./pwa";
+
+function UpdateBanner() {
+  const need = usePwa((s) => s.needRefresh);
+  const update = usePwa((s) => s.update);
+  if (!need) return null;
+  return (
+    <div role="status" className="fixed right-4 top-4 z-[60] flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-sm shadow-xl">
+      A new version of Mega Reader is available.
+      <button className="rounded-lg bg-accent px-3 py-1.5 font-medium text-accent-fg" onClick={() => void update?.()}>
+        Reload
+      </button>
+      <button className="text-muted hover:text-fg" onClick={() => usePwa.setState({ needRefresh: false })}>
+        Later
+      </button>
+    </div>
+  );
+}
 
 function useTheme() {
   const theme = useSettings((s) => s.appearance.theme);
@@ -58,6 +76,7 @@ export function App() {
     <>
       {route.name === "doc" ? <ReaderView key={route.id} docId={route.id} /> : <LibraryView />}
       <Toasts />
+      <UpdateBanner />
     </>
   );
 }

@@ -17,6 +17,8 @@ export interface EngineStatus {
   dtype?: string;
   error?: string;
   message?: string;
+  /** Real-time factor (synthesis time / audio duration); > 1 means slower than playback. */
+  rtf?: number;
 }
 
 /** Word timing in seconds (at playback rate 1), offsets relative to the request text. */

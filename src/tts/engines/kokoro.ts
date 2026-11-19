@@ -74,6 +74,7 @@ export class KokoroEngine implements TtsEngine {
             const dur = m.pcm.length / m.sr;
             if (dur > 0) this.rtf = this.rtf ? this.rtf * 0.7 + (m.ms / 1000 / dur) * 0.3 : m.ms / 1000 / dur;
             console.debug(`[kokoro] ${dur.toFixed(2)} s audio in ${(m.ms / 1000).toFixed(2)} s (RTF ${(m.ms / 1000 / Math.max(dur, 1e-3)).toFixed(2)})`);
+            if (dur > 1) this.emit({ state: "ready", device: this.device ?? undefined, dtype: this.dtype ?? undefined, rtf: this.rtf });
             p?.resolve({ pcm: m.pcm, sampleRate: m.sr, timingSource: "estimated" });
             break;
           }
