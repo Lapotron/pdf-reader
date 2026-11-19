@@ -1,4 +1,4 @@
-export type EngineId = "kokoro" | "openai" | "elevenlabs" | "azure" | "webspeech" | "mock";
+export type EngineId = "kokoro" | "chatterbox" | "openai" | "elevenlabs" | "azure" | "webspeech" | "mock";
 
 export interface VoiceInfo {
   id: string;

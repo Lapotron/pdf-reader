@@ -77,6 +77,43 @@ export class ElevenLabsEngine implements TtsEngine {
     return this.voicesCache;
   }
 
+  /**
+   * Instant voice cloning: uploads the samples and returns the new voice id. Requires an
+   * ElevenLabs plan with voice cloning and the speaker's consent.
+   */
+  async cloneVoice(name: string, samples: Blob[], description = "Cloned in Mega Reader"): Promise<string> {
+    const key = this.cfg().apiKey;
+    if (!key) throw new Error("ElevenLabs API key missing — add it in Settings › Voice & engine.");
+    const form = new FormData();
+    form.append("name", name);
+    form.append("description", description);
+    form.append("remove_background_noise", "false");
+    samples.forEach((b, i) => form.append("files", b, `sample-${i + 1}.wav`));
+    let res: Response;
+    try {
+      res = await fetch(`${API}/v1/voices/add`, { method: "POST", headers: { "xi-api-key": key }, body: form });
+    } catch (e) {
+      throw new Error(`Could not reach ElevenLabs (${(e as Error).message}). If your browser blocks this request, create the clone at elevenlabs.io — it will then appear in the ElevenLabs voice list here.`);
+    }
+    if (!res.ok) throw new Error(`ElevenLabs voice cloning failed — ${await readApiError(res)}`);
+    const j = (await res.json()) as { voice_id: string };
+    this.voicesCache = null;
+    return j.voice_id;
+  }
+
+  async deleteVoice(voiceId: string): Promise<void> {
+    const key = this.cfg().apiKey;
+    if (!key) throw new Error("ElevenLabs API key missing.");
+    const res = await fetch(`${API}/v1/voices/${encodeURIComponent(voiceId)}`, { method: "DELETE", headers: { "xi-api-key": key } });
+    if (!res.ok && res.status !== 404) throw new Error(`ElevenLabs delete failed — ${await readApiError(res)}`);
+    this.voicesCache = null;
+  }
+
+  /** Forces the next listVoices() to refetch. */
+  invalidateVoices(): void {
+    this.voicesCache = null;
+  }
+
   /** Some plans refuse raw PCM; remember and use MP3 (decoded locally) instead. */
   private useMp3 = false;
 

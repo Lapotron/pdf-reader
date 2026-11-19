@@ -20,6 +20,8 @@ export interface PlayerStore {
   position: PositionView | null;
   voices: VoiceInfo[];
   voicesFor: EngineId | null;
+  /** Bumped when cloned voices are added/removed, so voice lists reload. */
+  voicesRev: number;
   error: string | null;
   notice: string | null;
   sleepUntil: number | null;
@@ -33,6 +35,7 @@ export const usePlayer = create<PlayerStore>()(() => ({
   position: null,
   voices: [],
   voicesFor: null,
+  voicesRev: 0,
   error: null,
   notice: null,
   sleepUntil: null,

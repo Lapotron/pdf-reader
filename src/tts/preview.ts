@@ -27,7 +27,8 @@ export interface PreviewDeps {
   onStatus?(s: EngineStatus): void;
   /** Called when a preview fails or times out (not for cancellations). */
   onError?(e: Error): void;
-  watchdogMs?: number;
+  /** Max time without progress once the engine is ready (default 90 s). */
+  watchdogMs?: number | ((engine: EngineId) => number);
 }
 
 interface Run {
@@ -47,7 +48,13 @@ const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
  */
 export function createPreviewer(deps: PreviewDeps) {
   let current: Run | null = null;
-  const watchdogMs = deps.watchdogMs ?? 90_000;
+  let activity: () => void = () => {};
+  // One stable listener per previewer (engines keep their listeners in a Set).
+  const onEngineStatus = (s: EngineStatus) => {
+    deps.onStatus?.(s);
+    activity();
+  };
+  const watchdogFor = (id: EngineId) => (typeof deps.watchdogMs === "function" ? deps.watchdogMs(id) : (deps.watchdogMs ?? 90_000));
 
   function finish(run: Run): void {
     if (current !== run) return;
@@ -81,24 +88,31 @@ export function createPreviewer(deps: PreviewDeps) {
   async function play(engineId: EngineId, voice: string, text = deps.settings().previewText): Promise<void> {
     stop();
     const ctrl = new AbortController();
-    const run: Run = {
-      ctrl,
-      sounds: [],
-      live: null,
-      timer: setTimeout(() => {
+    const run: Run = { ctrl, sounds: [], live: null, timer: setTimeout(() => {}, 0) };
+    // The watchdog measures time without progress after the engine is ready: model downloads
+    // and first-time loading can legitimately take minutes.
+    const arm = () => {
+      clearTimeout(run.timer);
+      run.timer = setTimeout(() => {
         if (current !== run) return;
         stop();
-        deps.onError?.(new Error("The voice preview took too long. The voice model may still be loading; try again in a moment."));
-      }, watchdogMs),
+        deps.onError?.(new Error("The voice preview took too long and was stopped. Try again, or choose another voice."));
+      }, watchdogFor(engineId));
     };
+    let armed = false;
     current = run;
     usePreview.setState({ target: previewKey(engineId, voice), phase: "preparing" });
     deps.onStart?.();
     const running = deps.sink.ensureRunning().catch(() => {}); // inside the click gesture
     try {
       const e = deps.getEngine(engineId);
-      await e.init(deps.onStatus ?? (() => {}));
+      activity = () => {
+        if (armed && current === run) arm(); // engine activity counts as progress
+      };
+      await e.init(onEngineStatus);
       if (ctrl.signal.aborted) return;
+      armed = true;
+      arm();
       const t = deps.settings();
       if (isLive(e)) {
         run.live = e;
@@ -130,6 +144,7 @@ export function createPreviewer(deps: PreviewDeps) {
       for (let i = 0; i < pieces.length; i++) {
         const a = await piece(e, pieces[i], voice, synthSpeed, ctrl.signal);
         if (ctrl.signal.aborted || current !== run) return;
+        arm();
         const pcm = stretch === 1 ? a.pcm : timeStretch(a.pcm, a.sampleRate, stretch);
         const when = Math.max(deps.sink.now + 0.05, prevEnd + (i ? 0.12 : 0));
         const snd = deps.sink.schedule(pcm, a.sampleRate, when, { rate });

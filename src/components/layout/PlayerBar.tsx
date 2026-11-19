@@ -45,6 +45,7 @@ function SpeedControl() {
 export function useVoices(engine: EngineId): { voices: VoiceInfo[]; error: string | null; loading: boolean } {
   const [state, setState] = useState<{ voices: VoiceInfo[]; error: string | null; loading: boolean }>({ voices: engine === "kokoro" ? KOKORO_VOICES : [], error: null, loading: true });
   const status = usePlayer((s) => s.engineStatus.state);
+  const rev = usePlayer((s) => s.voicesRev);
   useEffect(() => {
     let cancelled = false;
     setState((s) => ({ ...s, loading: true }));
@@ -55,7 +56,7 @@ export function useVoices(engine: EngineId): { voices: VoiceInfo[]; error: strin
     return () => {
       cancelled = true;
     };
-  }, [engine, status]);
+  }, [engine, status, rev]);
   return state;
 }
 
@@ -108,7 +109,17 @@ export function VoiceList({ engine, compact }: { engine: EngineId; compact?: boo
       {voices.length > 8 && <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter voices" aria-label="Filter voices" className="mb-2 h-8 w-full rounded-md border border-line bg-panel-2 px-2 text-sm" />}
       <PreviewStatus engine={engine} />
       {loading && !voices.length && <p className="text-sm text-muted">Loading voices…</p>}
-      {!loading && !voices.length && <p className="text-sm text-muted">No voices available. Check the API key in Settings.</p>}
+      {!loading && !voices.length &&
+        (engine === "chatterbox" ? (
+          <div className="rounded-lg border border-dashed border-line p-3 text-sm">
+            <p className="text-muted">No cloned voices yet. Record about a minute of speech to create one.</p>
+            <button className="mt-2 text-accent hover:underline" onClick={() => useUi.setState({ voiceCreatorOpen: true })}>
+              Create a voice…
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">No voices available. Check the API key in Settings.</p>
+        ))}
       <ul className={cx("overflow-auto", compact ? "max-h-64" : "max-h-80")} role="listbox" aria-label="Voices">
         {list.map((v) => (
           <li key={v.id} role="option" aria-selected={v.id === selected} className={cx("group flex items-center gap-2 rounded-lg px-2 py-1.5", v.id === selected ? "bg-accent-soft" : "hover:bg-panel-2")}>

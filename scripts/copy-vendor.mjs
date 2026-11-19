@@ -37,4 +37,14 @@ for (const f of ["ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-simd-threaded.jsep
   if (!existsSync(src)) throw new Error(`Missing ONNX Runtime asset: ${src}`);
   copyFileSync(src, join(ortOut, f));
 }
+// ONNX Runtime used by transformers.js v4 (Chatterbox voice cloning): its "asyncify" build.
+const transformers4Dir = pkgDir("@huggingface/transformers");
+const ort4Dir = pkgDir("onnxruntime-web", transformers4Dir);
+const ort4Out = join(out, "ort4");
+mkdirSync(ort4Out, { recursive: true });
+for (const f of ["ort-wasm-simd-threaded.asyncify.mjs", "ort-wasm-simd-threaded.asyncify.wasm"]) {
+  const src = join(ort4Dir, "dist", f);
+  if (!existsSync(src)) throw new Error(`Missing ONNX Runtime asset: ${src}`);
+  copyFileSync(src, join(ort4Out, f));
+}
 console.log("[copy-vendor] pdf.js assets and ONNX Runtime wasm copied to public/vendor");

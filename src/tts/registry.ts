@@ -4,6 +4,8 @@ import { usePlayer } from "../state/player";
 import { AzureEngine } from "./engines/azure";
 import { ElevenLabsEngine } from "./engines/elevenlabs";
 import { KokoroEngine } from "./engines/kokoro";
+import { ChatterboxEngine } from "./engines/chatterbox";
+import { db } from "../db/schema";
 import { MockEngine } from "./engines/mock";
 import { OpenAIEngine } from "./engines/openai";
 import { WebSpeechEngine } from "./engines/webspeech";
@@ -21,6 +23,7 @@ export const ENGINE_INFO: EngineInfo[] = [
   { id: "openai", label: "OpenAI", description: "High-quality cloud voices using your OpenAI API key. Also works with any OpenAI-compatible speech server.", badges: ["API key", "Cloud"] },
   { id: "elevenlabs", label: "ElevenLabs", description: "Premium expressive cloud voices with exact word timing, using your ElevenLabs API key.", badges: ["API key", "Cloud", "Exact words"] },
   { id: "azure", label: "Azure Neural", description: "Microsoft neural voices with exact word timing, using your Azure Speech key and region.", badges: ["API key", "Cloud", "Exact words"] },
+  { id: "chatterbox", label: "My voices (cloned)", description: "Your own cloned voices, learned from about a minute of recorded speech. Runs on this device: ~1.5 GB one-time download; a GPU with WebGPU is strongly recommended. English only.", badges: ["Voice cloning", "Private", "~1.5 GB", "GPU"] },
   { id: "webspeech", label: "Browser voices", description: "Built-in system voices. Lowest quality; no export. Used as a fallback.", badges: ["Fallback"] },
 ];
 
@@ -51,6 +54,9 @@ export function getEngine(id: EngineId): AnyEngine {
     case "webspeech":
       e = new WebSpeechEngine();
       break;
+    case "chatterbox":
+      e = new ChatterboxEngine(() => ({ exaggeration: getSettings().tts.chatterboxExaggeration }));
+      break;
     case "mock": {
       const scale = Number(new URLSearchParams(location.search).get("mockspeed") ?? "1");
       e = new MockEngine(20, Number.isFinite(scale) && scale > 0 ? scale : 1);
@@ -65,7 +71,7 @@ export function getEngine(id: EngineId): AnyEngine {
 export function engineOverride(): EngineId | null {
   try {
     const v = new URLSearchParams(location.search).get("engine");
-    return v && ["kokoro", "openai", "elevenlabs", "azure", "webspeech", "mock"].includes(v) ? (v as EngineId) : null;
+    return v && ["kokoro", "chatterbox", "openai", "elevenlabs", "azure", "webspeech", "mock"].includes(v) ? (v as EngineId) : null;
   } catch {
     return null;
   }
@@ -82,6 +88,10 @@ export async function activeEngine(): Promise<AnyEngine> {
   const id = selectedEngineId();
   const e = getEngine(id);
   try {
+    // Don't start a 1.5 GB download when there is nothing to speak with.
+    if (id === "chatterbox" && (await db.voices.where("engine").equals("chatterbox").count()) === 0) {
+      throw new Error("no cloned voice yet — create one in Settings › Voice › My voices");
+    }
     await e.init(onStatus);
     usePlayer.setState({ activeEngine: id });
     return e;

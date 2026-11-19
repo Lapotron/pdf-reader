@@ -55,6 +55,8 @@ export interface TtsSettings {
   elevenModel: string;
   elevenStability: number;
   elevenSimilarity: number;
+  /** Chatterbox expressiveness (0 = flat, 1.5 = very animated). */
+  chatterboxExaggeration: number;
   azureRegion: string;
   previewText: string;
 }
@@ -96,6 +98,7 @@ export const DEFAULT_VOICES: Record<EngineId, string> = {
   azure: "en-US-AvaMultilingualNeural",
   webspeech: "",
   mock: "tone-a",
+  chatterbox: "",
 };
 
 export const DEFAULTS = {
@@ -147,6 +150,7 @@ export const DEFAULTS = {
     elevenModel: "eleven_multilingual_v2",
     elevenStability: 0.5,
     elevenSimilarity: 0.75,
+    chatterboxExaggeration: 0.5,
     azureRegion: "eastus",
     previewText: "Hi! This is how I sound when I read to you.",
   } as TtsSettings,

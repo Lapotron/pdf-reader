@@ -229,3 +229,61 @@ test("dark theme recolors PDF pages and the color set can be changed", async ({ 
   await page.getByTestId("page-colors-original").click();
   expect(await canvasFilter()).toBe("none");
 });
+
+/** 30 s of speech-like audio (modulated tone bursts and pauses) as a 24 kHz WAV. */
+function speechWav(seconds = 30): Buffer {
+  const sr = 24000;
+  const n = sr * seconds;
+  const data = Buffer.alloc(44 + n * 2);
+  data.write("RIFF", 0);
+  data.writeUInt32LE(36 + n * 2, 4);
+  data.write("WAVEfmt ", 8);
+  data.writeUInt32LE(16, 16);
+  data.writeUInt16LE(1, 20);
+  data.writeUInt16LE(1, 22);
+  data.writeUInt32LE(sr, 24);
+  data.writeUInt32LE(sr * 2, 28);
+  data.writeUInt16LE(2, 32);
+  data.writeUInt16LE(16, 34);
+  data.write("data", 36);
+  data.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const voiced = t % 2 < 1.6;
+    const v = voiced ? 0.3 * Math.sin(2 * Math.PI * 160 * t) * (0.6 + 0.4 * Math.sin(2 * Math.PI * 4 * t)) : 0;
+    data.writeInt16LE(Math.round(v * 32767), 44 + i * 2);
+  }
+  return data;
+}
+
+test("creates a cloned voice from an uploaded recording and manages it", async ({ page }) => {
+  page.on("dialog", (d) => void d.accept());
+  await openFixture(page, "simple.pdf");
+  await page.getByTestId("open-settings").click();
+  await page.getByTestId("create-voice").click();
+  const creator = page.getByTestId("voice-creator");
+  await expect(page.getByTestId("voice-continue")).toBeDisabled();
+  await page.getByTestId("voice-consent").check();
+  await page.getByTestId("voice-continue").click();
+  await page.getByTestId("voice-upload").setInputFiles({ name: "me.wav", mimeType: "audio/wav", buffer: speechWav() });
+  await expect(creator.getByText(/s of speech/)).toBeVisible();
+  await creator.getByLabel("Voice name").fill("Test voice");
+  await page.getByTestId("voice-save").click();
+  await expect(page.getByTestId("voice-creator")).toBeHidden();
+  const list = page.getByTestId("my-voices");
+  await expect(list.getByText("Test voice")).toBeVisible();
+  // The new voice is selected on the on-device cloning engine.
+  await expect(page.getByRole("radio", { name: /My voices \(cloned\)/ })).toHaveAttribute("aria-checked", "true");
+  // A too-short clip is rejected with a clear message.
+  await page.getByTestId("create-voice").click();
+  await page.getByTestId("voice-consent").check();
+  await page.getByTestId("voice-continue").click();
+  await page.getByTestId("voice-upload").setInputFiles({ name: "short.wav", mimeType: "audio/wav", buffer: speechWav(4) });
+  await expect(page.getByRole("alert")).toContainText("s of speech was detected");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("voice-creator")).toBeHidden();
+  await expect(list).toBeVisible(); // Escape closed only the creator, not Settings
+  // Delete.
+  await list.getByRole("button", { name: "Delete Test voice" }).click();
+  await expect(list.getByText("Test voice")).toBeHidden();
+});

@@ -24,6 +24,7 @@ import { ENGINE_INFO, resetEngine } from "../../tts/registry";
 import type { EngineId } from "../../tts/types";
 import { Button, ColorInput, Dialog, Kbd, ProgressBar, Section, Segmented, Select, Slider, TextInput, Toggle, cx } from "../ui";
 import { VoiceList } from "../layout/PlayerBar";
+import { MyVoices } from "./MyVoices";
 import { hexToRgba } from "../reader/PageView";
 import { PageColorPicker } from "../reader/pageColorsUi";
 
@@ -248,6 +249,24 @@ function VoiceTab() {
       <Section title="Voice" description="Click a voice to select it; ▶ plays a preview.">
         <TextInput label="Preview sentence" value={t.previewText} onChange={(v) => set({ previewText: v })} />
         <VoiceList engine={t.engine} />
+      </Section>
+      <Section title="My voices" description="Clone a voice from about a minute of speech, then read with it — on this device or with ElevenLabs.">
+        <MyVoices />
+        {t.engine === "chatterbox" && (
+          <Slider
+            className="mt-3"
+            label="Expressiveness"
+            value={t.chatterboxExaggeration}
+            min={0}
+            max={1.5}
+            step={0.05}
+            onChange={(v) => {
+              set({ chatterboxExaggeration: v });
+              applyPlaybackChange();
+            }}
+            format={(v) => (v < 0.35 ? "Calm" : v < 0.75 ? "Natural" : "Animated") + ` (${v.toFixed(2)})`}
+          />
+        )}
       </Section>
       <Section title="Delivery">
         <Slider

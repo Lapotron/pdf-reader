@@ -16,6 +16,10 @@ static app, so it can be hosted on GitHub Pages or run locally.
   - OpenAI. Also works with any OpenAI-compatible `/v1/audio/speech` server, such as a self-hosted Kokoro server.
   - ElevenLabs.
   - Azure Neural.
+- **Your own cloned voices** ("My voices"): record or upload about a minute of speech and the app learns the voice.
+  - **On this device** with Chatterbox (Resemble AI, MIT) via Transformers.js: private and free, about 1.5 GB to download once. It needs a GPU with WebGPU (Chrome or Edge) to be usable; on a CPU it takes minutes per sentence. English only.
+  - **With ElevenLabs** Instant Voice Cloning, using your API key and a plan that includes cloning.
+  - Only clone your own voice or one you have permission to use.
 - **Browser voices** as a last-resort fallback.
 - **Gapless playback** through Web Audio. The app generates audio for the next sentences ahead of time and caches generated audio in IndexedDB, so replays and exports are instant.
 - **Speed and pitch:** speed from 0.5× to 3×, a small pitch adjustment, and configurable pauses between sentences and paragraphs.
@@ -23,6 +27,7 @@ static app, so it can be hosted on GitHub Pages or run locally.
 - **Media keys** work through the Media Session API.
 
 **Stay focused**
+- **Dark-mode page colors**: pages are recolored on the GPU instead of staying white. There are 7 color sets (Soft dark, Warm night, Midnight, OLED black, Low glare, High contrast, Sepia paper), all with at least 7:1 text contrast, in "keep colors" or "duotone" image modes.
 - **Floating reading line**:
   - Styles: band, underline, or window.
   - Configurable color, opacity, width (line, column or page), height, padding, upcoming lines, and glide animation.
@@ -48,7 +53,7 @@ static app, so it can be hosted on GitHub Pages or run locally.
 - Local library with thumbnails, reading progress, and automatic resume at the sentence where you stopped.
 - Per-document voice and speed memory.
 - Bookmarks, highlights in 5 colors, and notes. Highlights can be exported as Markdown.
-- Outline (table of contents), page thumbnails, and full-text search in the document.
+- Outline (table of contents), page thumbnails, and full-text search in the document, in a resizable sidebar.
 
 **Extras**
 - Export a page, a page range, a chapter or the whole document to **MP3 or WAV**, with optional **VTT subtitles**.

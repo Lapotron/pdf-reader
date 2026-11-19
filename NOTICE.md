@@ -10,6 +10,7 @@ The built application bundles or downloads the following third-party components:
 | [kokoro-js](https://github.com/hexgrad/kokoro) | Kokoro inference in the browser | Apache-2.0 |
 | [Transformers.js](https://github.com/huggingface/transformers.js) | Model loading and inference | Apache-2.0 |
 | [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) | WASM/WebGPU inference runtime | MIT |
+| [Chatterbox](https://huggingface.co/ResembleAI/chatterbox) model (ONNX export `onnx-community/chatterbox-ONNX`) | On-device voice cloning (downloaded at runtime, only when used) | MIT |
 | [phonemizer](https://www.npmjs.com/package/phonemizer) | Grapheme-to-phoneme conversion for Kokoro | Apache-2.0 (package) |
 | ↳ [eSpeak NG](https://github.com/espeak-ng/espeak-ng) compiled to WebAssembly, bundled inside `phonemizer` | Phonemization | **GPL-3.0** |
 | [lamejs](https://github.com/breezystack/lamejs) (`@breezystack/lamejs`) | MP3 encoding (loaded only in the MP3 export worker, as a separate unmodified chunk) | **LGPL-3.0** |

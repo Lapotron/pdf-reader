@@ -20,6 +20,8 @@ const previewer = createPreviewer({
   },
   onStatus,
   onError: (e) => toast(e.message, "error", 7000),
+  // On-device cloning is much slower per sentence (and learns the voice on first use).
+  watchdogMs: (engine) => (engine === "chatterbox" ? 600_000 : 90_000),
 });
 
 // Starting the reader ends any preview.

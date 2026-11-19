@@ -15,6 +15,7 @@ export interface UiStore {
   followPaused: boolean;
   /** True while the reader sidebar is being resized (document view defers relayout). */
   resizingSidebar: boolean;
+  voiceCreatorOpen: boolean;
 }
 
 export const useUi = create<UiStore>()(() => ({
@@ -25,6 +26,7 @@ export const useUi = create<UiStore>()(() => ({
   manualRuler: null,
   followPaused: false,
   resizingSidebar: false,
+  voiceCreatorOpen: false,
 }));
 
 export const openSettings = (tab = "voice") => useUi.setState({ settingsOpen: true, settingsTab: tab });

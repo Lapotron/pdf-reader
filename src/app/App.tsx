@@ -9,6 +9,7 @@ import { cx } from "../components/ui";
 import { audioCache } from "../tts/audioCache";
 import { usePwa } from "./pwa";
 import { PageColorFilters } from "../components/reader/pageColorsUi";
+import { VoiceCreator } from "../components/settings/VoiceCreator";
 
 function UpdateBanner() {
   const need = usePwa((s) => s.needRefresh);
@@ -79,6 +80,7 @@ export function App() {
       <Toasts />
       <UpdateBanner />
       <PageColorFilters />
+      <VoiceCreator />
     </>
   );
 }

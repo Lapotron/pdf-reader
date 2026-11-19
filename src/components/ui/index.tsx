@@ -184,13 +184,16 @@ export function Dialog({
   /** Classes for the body wrapper; pass a non-scrolling layout to manage scrolling inside. */
   bodyClassName?: string;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
+      if (e.key !== "Escape") return;
+      // Only the top-most dialog closes (dialogs can be stacked).
+      const modals = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (modals[modals.length - 1] !== dialogRef.current) return;
+      e.stopPropagation();
+      onClose();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -198,7 +201,7 @@ export function Dialog({
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : undefined} className={cx("flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-panel text-fg shadow-2xl", wide ? "max-w-4xl" : "max-w-lg")}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : undefined} className={cx("flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-panel text-fg shadow-2xl", wide ? "max-w-4xl" : "max-w-lg")}>
         <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <h2 className="text-base font-semibold">{title}</h2>
           <IconButton label="Close" onClick={onClose}>

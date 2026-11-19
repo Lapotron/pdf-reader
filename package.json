@@ -20,9 +20,10 @@
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
+    "@huggingface/transformers": "^4.3.2",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
-    "kokoro-js": "^1.2.1",
+    "kokoro-js": "1.2.1",
     "lucide-react": "^1.75.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
     "pdfjs-dist": "^6.5.438",

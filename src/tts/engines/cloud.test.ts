@@ -57,6 +57,20 @@ describe("cloud engines", () => {
     expect(r.timings![1]).toMatchObject({ charStart: 3, charEnd: 8, start: 0.30000000000000004 });
   });
 
+  it("ElevenLabs instant cloning uploads multipart samples with the key", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ voice_id: "v_new" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const e = new ElevenLabsEngine(() => ({ apiKey: "k", model: "eleven_multilingual_v2", stability: 0.5, similarity: 0.75 }));
+    const id = await e.cloneVoice("My voice", [new Blob([new Uint8Array(10)], { type: "audio/wav" })]);
+    expect(id).toBe("v_new");
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.elevenlabs.io/v1/voices/add");
+    expect((init.headers as Record<string, string>)["xi-api-key"]).toBe("k");
+    const form = init.body as FormData;
+    expect(form.get("name")).toBe("My voice");
+    expect(form.getAll("files")).toHaveLength(1);
+  });
+
   it("Azure SSML escaping maps offsets back to the source text", () => {
     const { escaped, srcIndex } = escapeWithMap("A & B");
     expect(escaped).toBe("A &amp; B");

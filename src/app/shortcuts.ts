@@ -41,7 +41,7 @@ export function useShortcuts(): void {
       }
       if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       const ui = useUi.getState();
-      if (ui.settingsOpen || ui.exportOpen || ui.helpOpen) return;
+      if (ui.settingsOpen || ui.exportOpen || ui.helpOpen || ui.voiceCreatorOpen) return;
       const k = e.key;
       let handled = true;
       switch (k) {

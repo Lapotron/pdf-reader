@@ -86,6 +86,21 @@ export interface AudioCacheRow {
 
 export interface PronunciationRow extends PronunciationRule {}
 
+/** A cloned voice: reference recording plus where it lives (on device or ElevenLabs). */
+export interface VoiceRow {
+  id: string; // "cv_<uuid>"
+  name: string;
+  engine: "chatterbox" | "elevenlabs";
+  /** Cleaned recording, Int16 mono 24 kHz. */
+  pcm24k: ArrayBuffer;
+  /** Reference window (samples) used to condition on-device cloning. */
+  refStart: number;
+  refEnd: number;
+  durationSec: number;
+  elevenVoiceId?: string;
+  createdAt: number;
+}
+
 export interface MetaRow {
   k: string;
   v: unknown;
@@ -103,6 +118,7 @@ export class MegaDB extends Dexie {
   audioCache!: EntityTable<AudioCacheRow, "key">;
   pronunciations!: EntityTable<PronunciationRow, "id">;
   meta!: EntityTable<MetaRow, "k">;
+  voices!: EntityTable<VoiceRow, "id">;
 
   constructor(name = "mega-reader") {
     super(name);
@@ -119,6 +135,7 @@ export class MegaDB extends Dexie {
       pronunciations: "id, scope",
       meta: "k",
     });
+    this.version(2).stores({ voices: "id, engine, createdAt" });
   }
 }
 
