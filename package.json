@@ -1,0 +1,49 @@
+{
+  "name": "mega-reader",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PDF reader with natural neural text-to-speech, reading line, smart cleanup, library and annotations.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "vendor": "node scripts/copy-vendor.mjs",
+    "predev": "node scripts/copy-vendor.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/copy-vendor.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --trace off",
+    "fixtures": "node scripts/make-fixtures.mjs"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "dexie": "^4.4.7",
+    "dexie-react-hooks": "^4.4.0",
+    "kokoro-js": "^1.2.1",
+    "lucide-react": "^1.75.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
+    "pdfjs-dist": "^6.5.438",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "fake-indexeddb": "^6.2.8",
+    "jsdom": "^31.0.1",
+    "pdf-lib": "^1.17.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.1"
+  }
+}
