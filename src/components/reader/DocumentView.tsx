@@ -8,7 +8,7 @@ import { srcPos } from "../../pdf/types";
 import { usePlayer } from "../../state/player";
 import { useReader } from "../../state/reader";
 import { useSettings } from "../../state/settings";
-import { useUi } from "../../state/ui";
+import { pauseFollow, resumeFollow, useUi } from "../../state/ui";
 import { selectionToSource } from "./selection";
 import { computeLayout, fitScale, pageAtY, type DocLayout } from "./layout";
 import { PageView } from "./PageView";
@@ -16,8 +16,8 @@ import { RulerLayer, rulerTargetFromPlayer } from "./RulerLayer";
 import { SelectionMenu } from "./SelectionMenu";
 import { cx } from "../ui";
 
-const USER_SCROLL_HOLD = 4000;
 const NO_ANNOTATIONS: AnnotationRow[] = [];
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]);
 
 export function DocumentView() {
   const sizes = useReader((s) => s.sizes);
@@ -28,11 +28,14 @@ export function DocumentView() {
   const clickToRead = useSettings((s) => s.reading.clickToRead);
   const ruler = useSettings((s) => s.ruler);
   const pageTint = useSettings((s) => s.appearance.pageTint);
-  const showBack = useUi((s) => s.showBackToReading);
+  const followPaused = useUi((s) => s.followPaused);
+  const playerState = usePlayer((s) => s.state);
+  const showBack = followPaused && (playerState === "playing" || playerState === "buffering" || playerState === "loading" || playerState === "paused");
   const container = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState({ w: 0, h: 0 });
   const [range, setRange] = useState({ first: 0, last: 2 });
-  const programmaticUntil = useRef(0);
+  const draggingScrollbar = useRef(false);
+  const resumeCheck = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const annotations = useLiveQuery(() => (docId ? db.annotations.where("docId").equals(docId).toArray() : NO_ANNOTATIONS), [docId]) ?? NO_ANNOTATIONS;
 
@@ -58,7 +61,6 @@ export function DocumentView() {
   const scrollToY = useCallback((top: number, smooth: boolean) => {
     const el = container.current;
     if (!el) return;
-    programmaticUntil.current = performance.now() + (smooth ? 900 : 150);
     el.scrollTo({ top: Math.max(0, top), behavior: smooth ? "smooth" : "auto" });
   }, []);
 
@@ -71,7 +73,6 @@ export function DocumentView() {
       const i = pageAtY(prev, center);
       const frac = (center - prev.tops[i]) / Math.max(1, prev.heights[i]);
       const newTop = layout.tops[i] + frac * layout.heights[i] - el.clientHeight / 2;
-      programmaticUntil.current = performance.now() + 150;
       el.scrollTop = Math.max(0, newTop);
     }
     layoutRef.current = layout;
@@ -91,14 +92,39 @@ export function DocumentView() {
 
   useEffect(updateRange, [layout, updateRange]);
 
-  const markUserScroll = useCallback(() => {
-    useUi.setState({ userScrollAt: performance.now() });
-    if (player.isActive && !useUi.getState().showBackToReading) useUi.setState({ showBackToReading: true });
+  // Following pauses only on real user input (wheel, touch, scroll keys, scrollbar drag,
+  // navigation). Programmatic smooth scrolls never count, however long they take.
+  useEffect(() => {
+    const up = () => (draggingScrollbar.current = false);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      if (resumeCheck.current) clearTimeout(resumeCheck.current);
+    };
+  }, []);
+
+  /** If the user scrolled the spoken line back into the comfortable band, follow again. */
+  const resumeIfLineInView = useCallback(() => {
+    const el = container.current;
+    const L = layoutRef.current;
+    if (!el || !L.tops.length || !useUi.getState().followPaused) return;
+    const target = rulerTargetFromPlayer(useSettings.getState().ruler);
+    if (!target) return;
+    const top = L.tops[target.page - 1] + target.rect.y * scaleRef.current;
+    const bottom = top + target.rect.h * scaleRef.current;
+    if (top >= el.scrollTop + el.clientHeight * 0.12 && bottom <= el.scrollTop + el.clientHeight * 0.72) resumeFollow();
   }, []);
 
   const onScroll = () => {
     updateRange();
-    if (performance.now() > programmaticUntil.current) markUserScroll();
+    if (draggingScrollbar.current) pauseFollow();
+    if (useUi.getState().followPaused) {
+      // Check once the scrolling settles, so small scrolls don't flicker the button.
+      if (resumeCheck.current) clearTimeout(resumeCheck.current);
+      resumeCheck.current = setTimeout(resumeIfLineInView, 350);
+    }
   };
 
   // Ctrl/Cmd + wheel zoom.
@@ -128,6 +154,7 @@ export function DocumentView() {
         const i = Math.min(L.tops.length - 1, Math.max(0, req.page - 1));
         const el = container.current;
         const top = req.y !== undefined ? L.tops[i] + req.y * scaleRef.current - (el?.clientHeight ?? 0) * 0.3 : L.tops[i] - 8;
+        pauseFollow(); // user navigation (outline, search, bookmarks, page keys)
         scrollToY(top, !!req.smooth);
       }),
     [scrollToY],
@@ -160,7 +187,7 @@ export function DocumentView() {
       lastLine.current = key;
       const mode = useSettings.getState().reading.followMode;
       if (mode === "off" && !force) return;
-      if (!force && performance.now() - useUi.getState().userScrollAt < USER_SCROLL_HOLD) return;
+      if (!force && useUi.getState().followPaused) return;
       const s = scaleRef.current;
       const lineTop = L.tops[target.page - 1] + target.rect.y * s;
       const lineBottom = lineTop + target.rect.h * s;
@@ -168,7 +195,6 @@ export function DocumentView() {
       const st = el.scrollTop;
       if (mode === "center-line") scrollToY(lineTop - vh * 0.35, true);
       else if (force || lineTop < st + vh * 0.12 || lineBottom > st + vh * 0.72) scrollToY(lineTop - vh * 0.3, true);
-      useUi.setState({ showBackToReading: false });
     },
     [scrollToY],
   );
@@ -177,7 +203,6 @@ export function DocumentView() {
     () =>
       usePlayer.subscribe((s, p) => {
         if (s.position && s.position !== p.position) followNow(false);
-        if (s.state === "idle" && p.state !== "idle") useUi.setState({ showBackToReading: false });
       }),
     [followNow, followMode],
   );
@@ -199,7 +224,7 @@ export function DocumentView() {
     if (!p || !s) return;
     const pos = s.model.hitTest(p.page, p.x, p.y);
     window.getSelection()?.removeAllRanges();
-    useUi.setState({ userScrollAt: 0, showBackToReading: false });
+    resumeFollow();
     void player.play(pos ?? srcPos(p.page, 0), p.page);
   };
 
@@ -264,10 +289,15 @@ export function DocumentView() {
     <div className="relative h-full min-w-0 flex-1">
       <div
         ref={container}
-        className={cx("h-full overflow-auto bg-bg", pageTint && "tinted")}
+        className={cx("isolate h-full overflow-auto bg-bg", pageTint && "tinted")}
         onScroll={onScroll}
-        onWheel={(e) => !e.ctrlKey && markUserScroll()}
-        onTouchMove={markUserScroll}
+        onWheel={(e) => !e.ctrlKey && !e.metaKey && pauseFollow()}
+        onTouchMove={pauseFollow}
+        onKeyDown={(e) => SCROLL_KEYS.has(e.key) && pauseFollow()}
+        onPointerDown={(e) => {
+          // A press on the container itself (not its content) is the scrollbar.
+          if (e.target === e.currentTarget) draggingScrollbar.current = true;
+        }}
         data-testid="document-view"
         tabIndex={-1}
       >
@@ -298,10 +328,11 @@ export function DocumentView() {
       {showBack && (
         <button
           onClick={() => {
-            useUi.setState({ userScrollAt: 0 });
+            resumeFollow();
             followNow(true);
           }}
-          className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg px-4 py-2 text-sm text-bg shadow-lg"
+          className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg px-4 py-2 text-sm text-bg shadow-lg"
+          data-testid="back-to-reading"
         >
           <LocateFixed size={16} /> Back to reading position
         </button>

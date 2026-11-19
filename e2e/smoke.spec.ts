@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 
 const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
 
-async function openFixture(page: Page, name: string) {
-  await page.goto("./?engine=mock&mockspeed=0.25#/");
+async function openFixture(page: Page, name: string, query = "engine=mock&mockspeed=0.25") {
+  await page.goto(`./?${query}#/`);
   await page.getByTestId("file-input").setInputFiles(fixture(name));
   await expect(page).toHaveURL(/#\/doc\/[0-9a-f]{64}/);
   await expect(page.getByTestId("pdf-page").first()).toBeVisible();
@@ -126,4 +126,36 @@ test("works offline after the first visit (PWA)", async ({ page, context }) => {
   await page.getByTestId("play-button").click();
   await expect(page.getByTestId("now-reading")).toHaveText("The quick brown fox jumps over the lazy dog.");
   await context.setOffline(false);
+});
+
+test("Back to reading position returns to the spoken line and stays", async ({ page }) => {
+  await openFixture(page, "columns.pdf", "engine=mock&mockspeed=1.5");
+  const view = page.getByTestId("document-view");
+  const scrollTop = () => view.evaluate((el) => el.scrollTop);
+  await page.getByTestId("play-button").click();
+  await expect(page.getByTestId("player-bar")).toHaveAttribute("data-state", "playing");
+  // Scroll away with the mouse wheel.
+  await page.mouse.move(640, 400);
+  for (let i = 0; i < 12; i++) {
+    await page.mouse.wheel(0, 300);
+    await page.waitForTimeout(30);
+  }
+  const back = page.getByTestId("back-to-reading");
+  await expect(back).toBeVisible();
+  const away = await scrollTop();
+  expect(away).toBeGreaterThan(1500);
+  // Reading continues, but the page is not pulled back.
+  await page.waitForTimeout(5000);
+  expect(await scrollTop()).toBe(away);
+  // A real mouse click (Playwright hit-tests, so a covered button would fail here).
+  await back.click();
+  await page.waitForTimeout(1500);
+  await expect(back).toBeHidden();
+  const ruler = (await page.getByTestId("reading-ruler").boundingBox())!;
+  const box = (await view.boundingBox())!;
+  expect(ruler.y).toBeGreaterThanOrEqual(box.y);
+  expect(ruler.y + ruler.height).toBeLessThanOrEqual(box.y + box.height);
+  // It does not come straight back after the smooth scroll finishes.
+  await page.waitForTimeout(1500);
+  await expect(back).toBeHidden();
 });

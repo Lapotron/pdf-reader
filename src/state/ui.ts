@@ -8,9 +8,13 @@ export interface UiStore {
   helpOpen: boolean;
   /** Manual reading-line position when not playing. */
   manualRuler: { page: number; rect: Rect; lineIndex?: number } | null;
-  /** Timestamp of the last user-initiated scroll (pauses auto-follow). */
-  userScrollAt: number;
-  showBackToReading: boolean;
+  /**
+   * True after the user scrolls or navigates away from the spoken line. Auto-follow stays off
+   * until they come back (button, scrolling the line into view, or a playback command).
+   */
+  followPaused: boolean;
+  /** True while the reader sidebar is being resized (document view defers relayout). */
+  resizingSidebar: boolean;
 }
 
 export const useUi = create<UiStore>()(() => ({
@@ -19,8 +23,16 @@ export const useUi = create<UiStore>()(() => ({
   exportOpen: false,
   helpOpen: false,
   manualRuler: null,
-  userScrollAt: 0,
-  showBackToReading: false,
+  followPaused: false,
+  resizingSidebar: false,
 }));
 
 export const openSettings = (tab = "voice") => useUi.setState({ settingsOpen: true, settingsTab: tab });
+
+export const pauseFollow = () => {
+  if (!useUi.getState().followPaused) useUi.setState({ followPaused: true });
+};
+
+export const resumeFollow = () => {
+  if (useUi.getState().followPaused) useUi.setState({ followPaused: false });
+};

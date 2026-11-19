@@ -5,22 +5,30 @@ import { PDF_TO_CSS } from "../pdf/pdfjs";
 import { usePlayer } from "../state/player";
 import { requestScroll, useReader } from "../state/reader";
 import { useSettings } from "../state/settings";
-import { useUi } from "../state/ui";
+import { resumeFollow, useUi } from "../state/ui";
 
 export const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
 
 export function togglePlay(): void {
-  useUi.setState({ userScrollAt: 0 });
+  resumeFollow();
   if (player.state === "idle" || player.state === "error") {
     void player.play(undefined, useReader.getState().currentPage);
   } else player.toggle();
 }
 
-export const nextSentence = () => void player.next();
-export const prevSentence = () => void player.prev();
+export function nextSentence(): void {
+  resumeFollow();
+  void player.next();
+}
+
+export function prevSentence(): void {
+  resumeFollow();
+  void player.prev();
+}
 
 /** Jumps to the next/previous paragraph start. */
 export async function jumpParagraph(dir: 1 | -1): Promise<void> {
+  resumeFollow();
   const model = getSession()?.model;
   const pos = player.position;
   if (!model || !pos) return;

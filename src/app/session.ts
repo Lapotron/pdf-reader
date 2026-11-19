@@ -6,6 +6,7 @@ import { destroyPdf, openPdf, type PDFDocumentProxy } from "../pdf/pdfjs";
 import { pageOf } from "../pdf/types";
 import { usePlayer, type PositionView } from "../state/player";
 import { useReader, requestScroll } from "../state/reader";
+import { resumeFollow } from "../state/ui";
 import { DEFAULT_VOICES, getSettings, useSettings } from "../state/settings";
 import type { CleanupOptions } from "../text/cleanup";
 import { compileRules } from "../text/pronunciation";
@@ -108,6 +109,7 @@ bindMediaSession(
   player,
   () => session?.title ?? "",
   () => {
+    resumeFollow();
     if (player.state === "paused") player.resume();
     else void player.play(undefined, useReader.getState().currentPage);
   },

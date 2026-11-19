@@ -9,6 +9,7 @@ import { HIGHLIGHT_COLORS } from "../../db/annotations";
 import { saveBlob, safeFileName } from "../../lib/download";
 import { buildDisplay } from "../../text/cleanup";
 import { requestScroll, useReader } from "../../state/reader";
+import { resumeFollow } from "../../state/ui";
 import { Button, IconButton, ProgressBar, cx } from "../ui";
 
 export function OutlinePanel() {
@@ -124,7 +125,10 @@ export function BookmarksPanel() {
               className="min-w-0 flex-1 text-left"
               onClick={() => {
                 requestScroll(m.page);
-                if (m.srcPos !== undefined) void player.jumpTo(m.srcPos);
+                if (m.srcPos !== undefined) {
+                  resumeFollow(); // the jump wins over the navigation pause
+                  void player.jumpTo(m.srcPos);
+                }
               }}
             >
               <span className="line-clamp-2">{m.label}</span>
@@ -185,7 +189,7 @@ export function AnnotationsPanel() {
               <span className="mt-1 block pl-3 text-xs text-muted">Page {a.page}</span>
             </button>
             <div className="mt-1 flex gap-1 pl-2 opacity-0 group-hover:opacity-100">
-              <IconButton label="Read this" className="h-7 w-7" onClick={() => void player.play(a.srcStart)}>
+              <IconButton label="Read this" className="h-7 w-7" onClick={() => (resumeFollow(), void player.play(a.srcStart))}>
                 <Play size={14} />
               </IconButton>
               <IconButton

@@ -3,6 +3,7 @@ import { player } from "../../app/session";
 import { toast } from "../../app/toast";
 import { addHighlight, HIGHLIGHT_COLORS } from "../../db/annotations";
 import { useReader } from "../../state/reader";
+import { resumeFollow } from "../../state/ui";
 import { IconButton } from "../ui";
 
 /** Floating menu for a text selection: read from here, highlight, note, copy. */
@@ -27,6 +28,7 @@ export function SelectionMenu() {
       <IconButton
         label="Read from here"
         onClick={() => {
+          resumeFollow();
           void player.play(sel.srcStart);
           close();
         }}
