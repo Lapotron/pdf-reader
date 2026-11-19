@@ -1,20 +1,45 @@
 import { AbortError, type EngineStatus, type SynthesisRequest, type SynthesisResult, type TtsEngine, type VoiceInfo } from "../types";
 import type { KIn, KOut, KokoroDevice, KokoroDtype } from "./kokoroProtocol";
 
-interface Pending {
+const NOOP = () => {};
+
+interface Job {
+  id: number;
+  prio: number;
+  text: string;
+  voice: string;
+  speed: number;
   resolve(r: SynthesisResult): void;
   reject(e: Error): void;
+  /** Aborted while generating: the caller was already rejected; drop the result. */
+  aborted?: boolean;
 }
 
-/** Main-thread proxy for the Kokoro worker. One worker per app (singleton). */
+export type WorkerLike = Pick<Worker, "postMessage" | "terminate"> & {
+  onmessage: ((e: MessageEvent<KOut>) => void) | null;
+  onerror: ((e: ErrorEvent) => void) | null;
+};
+
+const defaultWorker = (): WorkerLike => new Worker(new URL("./kokoro.worker.ts", import.meta.url), { type: "module", name: "kokoro" }) as WorkerLike;
+
+/**
+ * Main-thread proxy for the Kokoro worker. One worker per app (singleton).
+ *
+ * The request queue lives here and the worker gets one job at a time. Inference blocks the
+ * worker thread, so a queue inside it could not see "cancel" messages until it was too late;
+ * here, cancelling a queued job is instant and only the job being generated has to finish.
+ */
 export class KokoroEngine implements TtsEngine {
   readonly id = "kokoro" as const;
   readonly label = "Kokoro — natural local voices";
-  readonly caps = { wordTimings: false, speedRange: [0.5, 2] as [number, number], offline: true, maxChars: 350, concurrency: 1, needsKey: false };
-  private worker: Worker | null = null;
+  readonly caps = { wordTimings: false, speedRange: [0.5, 2] as [number, number], offline: true, maxChars: 200, concurrency: 1, needsKey: false };
+  private worker: WorkerLike | null = null;
   private ready: Promise<void> | null = null;
-  private pending = new Map<number, Pending>();
+  private isReady = false;
+  private queue: Job[] = [];
+  private inflight: Job | null = null;
   private nextId = 1;
+  private createWorker: () => WorkerLike;
   private listeners = new Set<(s: EngineStatus) => void>();
   private files = new Map<string, { loaded: number; total: number }>();
   private config: () => { device: KokoroDevice; dtype: KokoroDtype };
@@ -24,8 +49,9 @@ export class KokoroEngine implements TtsEngine {
   /** Rolling real-time factor (synthesis time / audio duration). */
   rtf = 0;
 
-  constructor(config: () => { device: KokoroDevice; dtype: KokoroDtype }) {
+  constructor(config: () => { device: KokoroDevice; dtype: KokoroDtype }, createWorker: () => WorkerLike = defaultWorker) {
     this.config = config;
+    this.createWorker = createWorker;
   }
 
   modelTag(): string {
@@ -40,7 +66,7 @@ export class KokoroEngine implements TtsEngine {
     this.listeners.add(onStatus);
     if (this.ready) return this.ready;
     this.ready = new Promise<void>((resolve, reject) => {
-      const worker = new Worker(new URL("./kokoro.worker.ts", import.meta.url), { type: "module", name: "kokoro" });
+      const worker = this.createWorker();
       this.worker = worker;
       worker.onmessage = (e: MessageEvent<KOut>) => {
         const m = e.data;
@@ -65,35 +91,34 @@ export class KokoroEngine implements TtsEngine {
             this.voices = m.voices;
             this.device = m.device;
             this.dtype = m.dtype;
+            this.isReady = true;
             this.emit({ state: "ready", device: m.device, dtype: m.dtype });
             resolve();
+            this.dispatch();
             break;
           case "audio": {
-            const p = this.pending.get(m.id);
-            this.pending.delete(m.id);
+            const job = this.settle(m.id);
             const dur = m.pcm.length / m.sr;
             if (dur > 0) this.rtf = this.rtf ? this.rtf * 0.7 + (m.ms / 1000 / dur) * 0.3 : m.ms / 1000 / dur;
             console.debug(`[kokoro] ${dur.toFixed(2)} s audio in ${(m.ms / 1000).toFixed(2)} s (RTF ${(m.ms / 1000 / Math.max(dur, 1e-3)).toFixed(2)})`);
             if (dur > 1) this.emit({ state: "ready", device: this.device ?? undefined, dtype: this.dtype ?? undefined, rtf: this.rtf });
-            p?.resolve({ pcm: m.pcm, sampleRate: m.sr, timingSource: "estimated" });
+            if (job && !job.aborted) job.resolve({ pcm: m.pcm, sampleRate: m.sr, timingSource: "estimated" });
             break;
           }
-          case "cancelled": {
-            const p = this.pending.get(m.id);
-            this.pending.delete(m.id);
-            p?.reject(new AbortError());
+          case "cancelled":
+            this.settle(m.id);
             break;
-          }
           case "error":
             if (m.id !== undefined) {
-              const p = this.pending.get(m.id);
-              this.pending.delete(m.id);
-              p?.reject(new Error(m.msg));
+              const job = this.settle(m.id);
+              if (job && !job.aborted) job.reject(new Error(m.msg));
             } else if (m.fatal) {
               this.emit({ state: "error", error: m.msg });
               this.ready = null;
+              this.isReady = false;
               worker.terminate();
               this.worker = null;
+              this.failAll(new Error(m.msg));
               reject(new Error(m.msg));
             }
             break;
@@ -103,6 +128,8 @@ export class KokoroEngine implements TtsEngine {
         const msg = e.message || "Kokoro worker failed to start";
         this.emit({ state: "error", error: msg });
         this.ready = null;
+        this.isReady = false;
+        this.failAll(new Error(msg));
         reject(new Error(msg));
       };
       const { device, dtype } = this.config();
@@ -122,14 +149,51 @@ export class KokoroEngine implements TtsEngine {
   }
 
   async synthesize(req: SynthesisRequest): Promise<SynthesisResult> {
-    await this.init(() => {});
+    await this.init(NOOP); // shared no-op: the listener Set doesn't grow per call
     if (req.signal?.aborted) throw new AbortError();
     const id = this.nextId++;
     return new Promise<SynthesisResult>((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      req.signal?.addEventListener("abort", () => this.post({ t: "cancel", ids: [id] }), { once: true });
-      this.post({ t: "gen", id, text: req.text, voice: req.voice, speed: req.speed, prio: req.priority ?? id });
+      const job: Job = { id, prio: req.priority ?? id, text: req.text, voice: req.voice, speed: req.speed, resolve, reject };
+      // Keep the queue ordered by priority, then arrival.
+      let i = this.queue.findIndex((q) => q.prio > job.prio || (q.prio === job.prio && q.id > job.id));
+      if (i < 0) i = this.queue.length;
+      this.queue.splice(i, 0, job);
+      req.signal?.addEventListener(
+        "abort",
+        () => {
+          const k = this.queue.indexOf(job);
+          if (k >= 0) this.queue.splice(k, 1); // never reaches the worker
+          else if (this.inflight === job) job.aborted = true; // can't interrupt; drop the result
+          else return;
+          reject(new AbortError());
+        },
+        { once: true },
+      );
+      this.dispatch();
     });
+  }
+
+  /** Sends the next queued job when the worker is idle. */
+  private dispatch(): void {
+    if (this.inflight || !this.isReady || !this.worker) return;
+    const job = this.queue.shift();
+    if (!job) return;
+    this.inflight = job;
+    this.post({ t: "gen", id: job.id, text: job.text, voice: job.voice, speed: job.speed, prio: job.prio });
+  }
+
+  private settle(id: number): Job | null {
+    const job = this.inflight && this.inflight.id === id ? this.inflight : null;
+    if (job) this.inflight = null;
+    queueMicrotask(() => this.dispatch());
+    return job;
+  }
+
+  private failAll(e: Error): void {
+    const jobs = [...this.queue, ...(this.inflight ? [this.inflight] : [])];
+    this.queue = [];
+    this.inflight = null;
+    for (const j of jobs) if (!j.aborted) j.reject(e);
   }
 
   /** Terminates the worker (e.g. to switch device/precision). */
@@ -137,8 +201,8 @@ export class KokoroEngine implements TtsEngine {
     this.worker?.terminate();
     this.worker = null;
     this.ready = null;
-    for (const p of this.pending.values()) p.reject(new AbortError());
-    this.pending.clear();
+    this.isReady = false;
+    this.failAll(new AbortError());
     this.files.clear();
     this.emit({ state: "idle" });
   }

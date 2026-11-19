@@ -199,3 +199,18 @@ test("reader sidebar can be resized by dragging and keeps its width", async ({ p
   await page.getByRole("separator", { name: "Resize sidebar" }).dblclick();
   await expect.poll(async () => Math.round((await page.getByTestId("sidebar").boundingBox())!.width)).toBe(288);
 });
+
+test("voice preview shows its state and can be stopped", async ({ page }) => {
+  await openFixture(page, "simple.pdf");
+  await page.getByTestId("voice-button").click();
+  const btn = page.getByRole("button", { name: /Tone B$/ });
+  await btn.click();
+  const active = page.getByRole("button", { name: "Stop preview of Tone B" });
+  await expect(active).toHaveAttribute("data-phase", "playing");
+  await active.click(); // stop
+  await expect(page.getByRole("button", { name: "Preview Tone B" })).toHaveAttribute("data-phase", "idle");
+  // Plays to the end on its own and returns to idle.
+  await page.getByRole("button", { name: "Preview Tone B" }).click();
+  await expect(page.getByRole("button", { name: "Stop preview of Tone B" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Preview Tone B" })).toHaveAttribute("data-phase", "idle", { timeout: 15_000 });
+});

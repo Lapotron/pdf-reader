@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, Gauge, Loader2, Moon, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, Cpu, Cloud, Check } from "lucide-react";
+import { AlertTriangle, Download, Gauge, Loader2, Moon, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, Cpu, Cloud, Check, Square } from "lucide-react";
 import * as A from "../../app/actions";
-import { previewVoice } from "../../app/preview";
+import { togglePreview } from "../../app/preview";
+import { toast } from "../../app/toast";
+import { previewKey, usePreview } from "../../tts/preview";
 import { getSession, player } from "../../app/session";
 import { setSleepTimer } from "../../app/sleep";
 import { usePlayer } from "../../state/player";
@@ -57,6 +59,44 @@ export function useVoices(engine: EngineId): { voices: VoiceInfo[]; error: strin
   return state;
 }
 
+/** Preview button: play → spinner while generating → stop while playing. */
+export function PreviewButton({ engine, voice, name }: { engine: EngineId; voice: string; name: string }) {
+  const key = previewKey(engine, voice);
+  const phase = usePreview((s) => (s.target === key ? s.phase : null));
+  return (
+    <IconButton
+      label={phase ? `Stop preview of ${name}` : `Preview ${name}`}
+      className="h-7 w-7"
+      data-testid="preview-button"
+      data-phase={phase ?? "idle"}
+      onClick={() => void togglePreview(engine, voice).catch((e) => toast((e as Error).message, "error", 7000))}
+    >
+      {phase === "preparing" ? <Loader2 size={14} className="animate-spin" /> : phase === "playing" ? <Square size={12} fill="currentColor" /> : <Play size={13} />}
+    </IconButton>
+  );
+}
+
+/** While a preview waits for the engine, say why (download / warm-up). */
+function PreviewStatus({ engine }: { engine: EngineId }) {
+  const waiting = usePreview((s) => s.phase === "preparing" && !!s.target?.startsWith(`${engine}:`));
+  const st = usePlayer((s) => s.engineStatus);
+  if (!waiting) return null;
+  const text =
+    st.state === "downloading" && st.progress
+      ? `Downloading voice model ${Math.round(st.progress.loaded / 1048576)} / ${Math.round(st.progress.total / 1048576)} MB…`
+      : st.state === "loading"
+        ? (st.message ?? "Loading the voice model…")
+        : "Generating a sample…";
+  return (
+    <div className="mb-2 rounded-lg bg-panel-2 px-2.5 py-2 text-xs text-muted" role="status">
+      <span className="flex items-center gap-1.5">
+        <Loader2 size={13} className="animate-spin" /> {text}
+      </span>
+      {st.state === "downloading" && st.progress && <ProgressBar value={st.progress.loaded / Math.max(1, st.progress.total)} className="mt-1.5" />}
+    </div>
+  );
+}
+
 export function VoiceList({ engine, compact }: { engine: EngineId; compact?: boolean }) {
   const { voices, error, loading } = useVoices(engine);
   const selected = useSettings((s) => s.tts.voices[engine] ?? DEFAULT_VOICES[engine]);
@@ -66,6 +106,7 @@ export function VoiceList({ engine, compact }: { engine: EngineId; compact?: boo
   return (
     <div>
       {voices.length > 8 && <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter voices" aria-label="Filter voices" className="mb-2 h-8 w-full rounded-md border border-line bg-panel-2 px-2 text-sm" />}
+      <PreviewStatus engine={engine} />
       {loading && !voices.length && <p className="text-sm text-muted">Loading voices…</p>}
       {!loading && !voices.length && <p className="text-sm text-muted">No voices available. Check the API key in Settings.</p>}
       <ul className={cx("overflow-auto", compact ? "max-h-64" : "max-h-80")} role="listbox" aria-label="Voices">
@@ -82,9 +123,7 @@ export function VoiceList({ engine, compact }: { engine: EngineId; compact?: boo
                 </span>
               </span>
             </button>
-            <IconButton label={`Preview ${v.name}`} className="h-7 w-7" onClick={() => void previewVoice(engine, v.id).catch((e) => usePlayer.setState({ error: (e as Error).message }))}>
-              <Play size={13} />
-            </IconButton>
+            <PreviewButton engine={engine} voice={v.id} name={v.name} />
           </li>
         ))}
       </ul>

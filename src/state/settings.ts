@@ -85,6 +85,8 @@ export interface SettingsState {
   reset(section?: keyof Omit<SettingsState, "set" | "reset">): void;
 }
 
+const OLD_PREVIEW_TEXT = "Reading aloud makes long documents easier to follow. This is how I sound.";
+
 export const DEFAULT_VOICES: Record<EngineId, string> = {
   kokoro: "af_heart",
   openai: "alloy",
@@ -144,7 +146,7 @@ export const DEFAULTS = {
     elevenStability: 0.5,
     elevenSimilarity: 0.75,
     azureRegion: "eastus",
-    previewText: "Reading aloud makes long documents easier to follow. This is how I sound.",
+    previewText: "Hi! This is how I sound when I read to you.",
   } as TtsSettings,
   ui: { sidebarOpen: true, sidebarWidth: 288, sidebarTab: "outline", zoomMode: "fit-width", zoom: 1, debug: false } as UiSettings,
 };
@@ -168,6 +170,8 @@ export const useSettings = create<SettingsState>()(
           (out as unknown as Record<string, unknown>)[k] = { ...current[k], ...(p[k] ?? {}) };
         }
         out.tts.voices = { ...DEFAULT_VOICES, ...(p.tts?.voices ?? {}) };
+        // Shorter sample sentence (faster previews); keep texts the user customized.
+        if (out.tts.previewText === OLD_PREVIEW_TEXT) out.tts.previewText = DEFAULTS.tts.previewText;
         return out;
       },
     },
