@@ -148,7 +148,7 @@ export class ChatterboxEngine implements TtsEngine {
       worker.onerror = (e) => fail(e.message || "The voice-cloning worker failed to start");
       const base = new URL(`${import.meta.env.BASE_URL}vendor/ort4/`, location.href).href;
       this.emit({ state: "loading", message: "Starting the voice-cloning model…" });
-      worker.postMessage({ t: "init", device: "auto", wasm: `${base}ort-wasm-simd-threaded.asyncify.wasm`, mjs: `${base}ort-wasm-simd-threaded.asyncify.mjs` } satisfies CIn);
+      worker.postMessage({ t: "init", device: "auto", wasm: `${base}ort-wasm-simd-threaded.asyncify.wasm.gz`, mjs: `${base}ort-wasm-simd-threaded.asyncify.mjs` } satisfies CIn);
     });
     return this.ready;
   }

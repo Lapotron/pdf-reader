@@ -1,6 +1,7 @@
 // Module worker running Chatterbox (zero-shot voice cloning) via transformers.js v4.
 import { AutoProcessor, ChatterboxModel, Tensor, env } from "@huggingface/transformers";
 import { CHATTERBOX_MODEL_ID, type CIn, type COut } from "./chatterboxProtocol";
+import { loadWasmBinary } from "./wasmBinary";
 
 const ctx = self as unknown as {
   postMessage(m: COut, transfer?: Transferable[]): void;
@@ -41,7 +42,10 @@ async function load(device: "webgpu" | "wasm"): Promise<void> {
 }
 
 async function init(msg: Extract<CIn, { t: "init" }>): Promise<void> {
-  env.backends.onnx.wasm!.wasmPaths = { wasm: msg.wasm, mjs: msg.mjs };
+  post({ t: "status", message: "Loading the voice-cloning runtime…" });
+  const wasm = env.backends.onnx.wasm!;
+  wasm.wasmBinary = await loadWasmBinary(msg.wasm);
+  wasm.wasmPaths = { mjs: msg.mjs }; // the binary is provided directly, only the loader is fetched
   const gpu = msg.device !== "wasm" && (await hasWebGPU());
   let device: "webgpu" | "wasm" = gpu ? "webgpu" : "wasm";
   try {

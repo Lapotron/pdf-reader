@@ -33,7 +33,7 @@ describe("ChatterboxEngine", () => {
     e.setTempVoice("cv_a", new Float32Array(24000));
     const a1 = e.synthesize({ text: "One.", voice: "cv_a", speed: 1 });
     await tick();
-    expect(w.init?.wasm).toMatch(/vendor\/ort4\/ort-wasm-simd-threaded\.asyncify\.wasm$/);
+    expect(w.init?.wasm).toMatch(/vendor\/ort4\/ort-wasm-simd-threaded\.asyncify\.wasm\.gz$/);
     expect(w.gens[0].ref?.length).toBe(24000);
     w.finish(w.gens[0].id);
     await a1;

@@ -99,6 +99,13 @@ You can add `?engine=mock` to the URL to use the test-tone engine.
 pushes to `main`. To use it, enable Pages with the source set to "GitHub Actions".
 
 Any static host works. Serve `dist/`, with `VITE_BASE` set to the path the app is served under.
+The site needs HTTPS (offline mode, microphone recording and WebGPU require a secure origin) and
+no rewrite rules (routes use `#/…`). Every file is under 25 MiB, so Cloudflare Pages' per-file
+limit is respected: the 25.6 MiB voice-cloning runtime ships gzip-compressed and is decompressed
+in the browser.
+
+**Cloudflare Pages:** build command `npm run build`, output directory `dist`. Node 22 is selected by
+`.nvmrc`. For a direct upload, build locally and run `npx wrangler pages deploy dist`.
 
 ## How it works
 

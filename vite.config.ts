@@ -2,6 +2,8 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 // VITE_BASE lets the same build run at "/" locally and at "/<repo>/" on GitHub Pages.
 const base = process.env.VITE_BASE ?? "/";
@@ -24,12 +26,32 @@ function dropBundledOrtWasm(): Plugin {
   };
 }
 
+/** Warns about files that common static hosts reject (Cloudflare Pages: 25 MiB per file). */
+function warnLargeFiles(limitBytes = 25 * 1024 * 1024): Plugin {
+  let outDir = "dist";
+  return {
+    name: "warn-large-files",
+    apply: "build",
+    configResolved(c) {
+      outDir = c.build.outDir;
+    },
+    closeBundle() {
+      const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]));
+      for (const f of walk(outDir)) {
+        const size = statSync(f).size;
+        if (size > limitBytes) this.warn(`${f} is ${(size / 1048576).toFixed(1)} MiB; some static hosts (e.g. Cloudflare Pages) reject files over 25 MiB.`);
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base,
   plugins: [
     react(),
     tailwindcss(),
     dropBundledOrtWasm(),
+    warnLargeFiles(),
     VitePWA({
       registerType: "prompt",
       injectRegister: false,
@@ -58,7 +80,7 @@ export default defineConfig({
         navigateFallback: "index.html",
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.includes("/vendor/ort/"),
+            urlPattern: ({ url }) => /\/vendor\/ort4?\//.test(url.pathname),
             handler: "CacheFirst",
             options: { cacheName: "onnx-runtime", expiration: { maxEntries: 6 }, cacheableResponse: { statuses: [0, 200] } },
           },
