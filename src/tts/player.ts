@@ -5,7 +5,7 @@ import type { ReadingModel } from "../text/readingModel";
 import { chunkSentence, type Chunk, type Sentence } from "../text/segment";
 import type { AudioCache } from "./audioCache";
 import type { AudioSink, ScheduledSound } from "./audioSink";
-import { normalizeLoudness, trimSilence } from "./pcm";
+import { normalizeLoudness, timeStretch, trimSilence } from "./pcm";
 import { estimateWordTimings, wordAtTime } from "./timing";
 import { isLive, type AnyEngine, type LiveTtsEngine, type TtsEngine, type WordTiming } from "./types";
 
@@ -109,6 +109,7 @@ export function alignTimings(timings: WordTiming[], words: { start: number; end:
 }
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+const EMPTY_PCM = new Float32Array(0);
 
 /**
  * Read-aloud player: plans chunks from the reading model, prefetches synthesis ahead,
@@ -154,12 +155,14 @@ export class Player {
     const token = Symbol();
     this.playToken = token;
     try {
-      // Must happen synchronously-ish within the user gesture for autoplay policies.
+      // Start the audio context first, while still inside the user gesture (autoplay policies,
+      // notably Safari); engine initialization can take seconds on first use.
+      const running = sink.ensureRunning();
       const engine = await this.deps.getEngine();
       if (this.playToken !== token) return;
       this.engine = engine;
-      if (!isLive(engine)) await sink.ensureRunning();
-      else await sink.ensureRunning().catch(() => {});
+      if (!isLive(engine)) await running;
+      else await running.catch(() => {});
       if (this.playToken !== token) return;
       sink.setVolume(this.deps.prefs().volume, 0.01);
       let start: { sentence: Sentence; wordIdx: number } | null = null;
@@ -381,8 +384,13 @@ class PcmSession {
   private model: ReadingModel;
   private prefs: PlaybackPrefs;
   private synthSpeed: number;
+  /** Playback rate (pitch factor only). */
   private rate: number;
+  /** Pitch-preserving time-stretch for speeds outside the engine's native range. */
+  private stretch: number;
   private waitingFor: Item | null = null;
+  /** Index of the first item that has not finished playing (moves forward only). */
+  private firstLive = 0;
 
   constructor(player: Player, engine: TtsEngine, model: ReadingModel, start: { sentence: Sentence; wordIdx: number }) {
     this.player = player;
@@ -393,8 +401,11 @@ class PcmSession {
     this.firstWord = start.wordIdx;
     const [lo, hi] = engine.caps.speedRange;
     const pitch = clamp(this.prefs.pitch || 1, 0.85, 1.15);
+    // speed = synthSpeed * stretch * pitch; pitch is applied by the playback rate.
     this.synthSpeed = clamp(this.prefs.speed / pitch, lo, hi);
-    this.rate = this.prefs.speed / this.synthSpeed;
+    const stretch = this.prefs.speed / pitch / this.synthSpeed;
+    this.stretch = Math.abs(stretch - 1) < 0.02 ? 1 : stretch;
+    this.rate = this.prefs.speed / (this.synthSpeed * this.stretch);
   }
 
   isBuffering(): boolean {
@@ -461,8 +472,11 @@ class PcmSession {
       item.when = when;
       item.sound = sink.schedule(prep.pcm, prep.sampleRate, when, { rate: item.rate });
       this.prevEnd = when + prep.duration / item.rate;
+      // The audio buffer now owns a copy of the samples; free ours (long sessions would leak).
+      prep.pcm = EMPTY_PCM;
       item.sound.ended.then(() => {
         item.ended = true;
+        while (this.firstLive < this.items.length && this.items[this.firstLive].ended) this.firstLive++;
         if (!this.cancelled) void this.fill();
       });
       if (this.player.state === "loading" || this.player.state === "buffering") this.player.setState("playing");
@@ -475,7 +489,8 @@ class PcmSession {
     const sink = this.player.sink;
     const t = sink.now - sink.latency;
     let cur: Item | null = null;
-    for (const it of this.items) {
+    for (let k = Math.max(0, this.firstLive - 1); k < this.items.length; k++) {
+      const it = this.items[k];
       if (it.when === undefined) break;
       if (it.when <= t) cur = it;
       else break;
@@ -488,8 +503,7 @@ class PcmSession {
   }
 
   private activeIndex(): number {
-    const i = this.items.findIndex((it) => !it.ended);
-    return i < 0 ? this.items.length : i;
+    return this.firstLive;
   }
 
   private needMore(): boolean {
@@ -580,7 +594,7 @@ class PcmSession {
     const key = await sha256Hex([engine.id, engine.modelTag(), p.voice, this.synthSpeed.toFixed(2), NORMALIZER_VERSION, p.trimSilence ? 1 : 0, p.normalize ? 1 : 0, text].join("␟"));
     const hit = cache ? await cache.get(key) : null;
     if (hit && hit.timings && hit.timings.length === spans.length) {
-      return { pcm: hit.pcm, sampleRate: hit.sampleRate, timings: hit.timings, duration: hit.pcm.length / hit.sampleRate };
+      return this.applyStretch({ pcm: hit.pcm, sampleRate: hit.sampleRate, timings: hit.timings, duration: hit.pcm.length / hit.sampleRate });
     }
     if (signal.aborted) throw Object.assign(new Error("Aborted"), { name: "AbortError" });
     const res = await engine.synthesize({ text, voice: p.voice, speed: this.synthSpeed, signal, priority });
@@ -598,7 +612,14 @@ class PcmSession {
     const aligned = timings && timings.length ? alignTimings(timings, spans, duration) : estimateWordTimings(pcm, res.sampleRate, text, spans);
     if (p.normalize) pcm = normalizeLoudness(pcm);
     if (cache) void cache.put(key, { pcm, sampleRate: res.sampleRate, timings: aligned, timingSource: timings?.length ? "engine" : "estimated" }, this.player.docId);
-    return { pcm, sampleRate: res.sampleRate, timings: aligned, duration };
+    return this.applyStretch({ pcm, sampleRate: res.sampleRate, timings: aligned, duration });
+  }
+
+  private applyStretch(p: Prepared): Prepared {
+    const s = this.stretch;
+    if (s === 1) return p;
+    const pcm = timeStretch(p.pcm, p.sampleRate, s);
+    return { pcm, sampleRate: p.sampleRate, duration: pcm.length / p.sampleRate, timings: p.timings.map((t) => ({ ...t, start: t.start / s, end: t.end / s })) };
   }
 }
 

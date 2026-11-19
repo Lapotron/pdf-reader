@@ -200,6 +200,25 @@ describe("Player", () => {
   });
 });
 
+describe("Player time-stretch", () => {
+  it("keeps pitch (rate 1) and shortens audio when the engine has no native speed", async () => {
+    class FixedSpeed extends MockEngine {
+      override readonly caps = { ...new MockEngine().caps, speedRange: [1, 1] as [number, number] };
+    }
+    const sink = new FakeSink();
+    const base = new MockEngine(0);
+    const ref = await base.synthesize({ text: "One sentence only.", voice: "tone-a", speed: 1 });
+    const fast = { ...prefs, speed: 1.5 };
+    const p = new Player({ sink, cache: null, getEngine: async () => new FixedSpeed(0), prefs: () => fast });
+    p.setModel(new ReadingModel(provider([["One sentence only."]]), DEFAULT_CLEANUP));
+    await p.play();
+    await waitFor(() => sink.scheduled.length > 0);
+    const s = sink.scheduled[0];
+    expect(s.rate).toBeCloseTo(1);
+    expect(s.end - s.when).toBeCloseTo(ref.pcm.length / ref.sampleRate / 1.5, 1);
+  });
+});
+
 describe("alignTimings", () => {
   it("maps engine timings by char overlap and interpolates gaps", () => {
     const words = [

@@ -54,3 +54,22 @@ describe("timing", () => {
     expect(t[1].end).toBeCloseTo(0.6);
   });
 });
+
+import { timeStretch } from "./pcm";
+
+describe("timeStretch", () => {
+  it("changes duration but keeps pitch (zero-crossing rate)", () => {
+    const sr = 24000;
+    const f = new Float32Array(sr); // 1 s of 200 Hz
+    for (let i = 0; i < f.length; i++) f[i] = 0.5 * Math.sin((2 * Math.PI * 200 * i) / sr);
+    const fast = timeStretch(f, sr, 1.5);
+    expect(fast.length).toBe(Math.round(sr / 1.5));
+    const zc = (x: Float32Array) => {
+      let n = 0;
+      for (let i = 1; i < x.length; i++) if (x[i - 1] < 0 !== x[i] < 0) n++;
+      return n / (x.length / sr);
+    };
+    expect(zc(fast)).toBeGreaterThan(380);
+    expect(zc(fast)).toBeLessThan(420); // ~400 crossings/s for 200 Hz
+  });
+});

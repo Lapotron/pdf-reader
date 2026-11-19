@@ -3,7 +3,7 @@ import type { ReadingModel } from "../text/readingModel";
 import { chunkSentence } from "../text/segment";
 import type { AudioCache } from "../tts/audioCache";
 import { NORMALIZER_VERSION, type PlaybackPrefs } from "../tts/player";
-import { normalizeLoudness, resample, trimSilence } from "../tts/pcm";
+import { normalizeLoudness, resample, timeStretch, trimSilence } from "../tts/pcm";
 import type { TtsEngine } from "../tts/types";
 import type { Cue } from "./subtitles";
 
@@ -64,6 +64,8 @@ export async function exportRange(
         if (prefs.normalize) pcm = normalizeLoudness(pcm);
         sr = r.sampleRate;
       }
+      const stretch = prefs.speed / synthSpeed;
+      if (Math.abs(stretch - 1) >= 0.02) pcm = timeStretch(pcm, sr, stretch);
       const last = ci === chunks.length - 1;
       parts.push({ pcm, sr, pauseAfter: last ? (s.pauseAfter === "paragraph" ? prefs.pauseParagraph : prefs.pauseSentence) : 0.04, text: s.text, first: ci === 0 });
     }

@@ -77,9 +77,12 @@ export class ElevenLabsEngine implements TtsEngine {
     return this.voicesCache;
   }
 
-  async synthesize(req: SynthesisRequest): Promise<SynthesisResult> {
+  /** Some plans refuse raw PCM; remember and use MP3 (decoded locally) instead. */
+  private useMp3 = false;
+
+  private request(req: SynthesisRequest, format: string): Promise<Response> {
     const c = this.cfg();
-    const res = await fetch(`${API}/v1/text-to-speech/${encodeURIComponent(req.voice)}/with-timestamps?output_format=pcm_24000`, {
+    return fetch(`${API}/v1/text-to-speech/${encodeURIComponent(req.voice)}/with-timestamps?output_format=${format}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "xi-api-key": c.apiKey ?? "" },
       body: JSON.stringify({
@@ -89,15 +92,33 @@ export class ElevenLabsEngine implements TtsEngine {
       }),
       signal: req.signal,
     });
+  }
+
+  async synthesize(req: SynthesisRequest): Promise<SynthesisResult> {
+    let res = this.useMp3 ? null : await this.request(req, "pcm_24000");
+    if (res && !res.ok && [400, 403, 422].includes(res.status)) {
+      const msg = await readApiError(res);
+      if (!/format|pcm|tier|subscription|plan/i.test(msg)) throw new Error(`ElevenLabs TTS failed — ${msg}`);
+      this.useMp3 = true;
+      res = null;
+    }
+    if (!res) res = await this.request(req, "mp3_44100_128");
     if (!res.ok) throw new Error(`ElevenLabs TTS failed — ${await readApiError(res)}`);
     const j = (await res.json()) as {
       audio_base64: string;
       alignment?: { characters: string[]; character_start_times_seconds: number[]; character_end_times_seconds: number[] };
     };
-    const pcm = s16leBytesToFloat(base64ToBytes(j.audio_base64));
+    const bytes = base64ToBytes(j.audio_base64);
+    let pcm: Float32Array;
+    let sampleRate = 24000;
+    if (this.useMp3) {
+      const buf = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(bytes);
+      pcm = buf.getChannelData(0).slice();
+      sampleRate = buf.sampleRate;
+    } else pcm = s16leBytesToFloat(bytes);
     const a = j.alignment;
     const timings = a ? elevenAlignmentToTimings(req.text, a.characters, a.character_start_times_seconds, a.character_end_times_seconds) : undefined;
-    return { pcm, sampleRate: 24000, timings, timingSource: timings ? "engine" : "estimated" };
+    return { pcm, sampleRate, timings, timingSource: timings ? "engine" : "estimated" };
   }
 
   dispose(): void {}

@@ -25,8 +25,13 @@ export async function readApiError(res: Response): Promise<string> {
 export class OpenAIEngine implements TtsEngine {
   readonly id = "openai" as const;
   readonly label = "OpenAI TTS (API key)";
-  readonly caps = { wordTimings: false, speedRange: [0.25, 4] as [number, number], offline: false, maxChars: 4000, concurrency: 2, needsKey: true };
   private cfg: () => OpenAIConfig;
+
+  /** gpt-4o-mini-tts ignores `speed`; the player time-stretches instead. */
+  get caps() {
+    const fixed = /gpt-4o/.test(this.cfg().model);
+    return { wordTimings: false, speedRange: (fixed ? [1, 1] : [0.25, 4]) as [number, number], offline: false, maxChars: 4000, concurrency: 2, needsKey: true };
+  }
 
   constructor(cfg: () => OpenAIConfig) {
     this.cfg = cfg;
@@ -53,7 +58,8 @@ export class OpenAIEngine implements TtsEngine {
 
   async synthesize(req: SynthesisRequest): Promise<SynthesisResult> {
     const c = this.cfg();
-    const body: Record<string, unknown> = { model: c.model, input: req.text, voice: req.voice, response_format: "pcm", speed: req.speed };
+    const body: Record<string, unknown> = { model: c.model, input: req.text, voice: req.voice, response_format: "pcm" };
+    if (!/gpt-4o/.test(c.model)) body.speed = req.speed;
     if (c.instructions && /gpt-4o/.test(c.model)) body.instructions = c.instructions;
     const res = await fetch(`${c.baseUrl.replace(/\/$/, "")}/v1/audio/speech`, {
       method: "POST",

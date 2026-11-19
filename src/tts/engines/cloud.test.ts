@@ -17,7 +17,20 @@ describe("cloud engines", () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.openai.com/v1/audio/speech");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer sk-test");
-    expect(JSON.parse(init.body as string)).toMatchObject({ response_format: "pcm", speed: 1.2, instructions: "calm" });
+    const body = JSON.parse(init.body as string);
+    expect(body).toMatchObject({ response_format: "pcm", instructions: "calm" });
+    // gpt-4o-mini-tts ignores speed: not sent, and the player time-stretches instead.
+    expect(body.speed).toBeUndefined();
+    expect(e.caps.speedRange).toEqual([1, 1]);
+  });
+
+  it("OpenAI tts-1 sends native speed", async () => {
+    const fetchMock = vi.fn(async () => new Response(new Int16Array([0]).buffer, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const e = new OpenAIEngine(() => ({ apiKey: "k", model: "tts-1", baseUrl: "https://api.openai.com" }));
+    await e.synthesize({ text: "Hi", voice: "alloy", speed: 1.5 });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).speed).toBe(1.5);
   });
 
   it("OpenAI surfaces API error messages", async () => {

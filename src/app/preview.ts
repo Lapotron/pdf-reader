@@ -16,13 +16,14 @@ export async function previewVoice(engineId: EngineId, voice: string, text = get
   current?.stop();
   current = null;
   const e = getEngine(engineId);
+  const running = sink.ensureRunning().catch(() => {}); // inside the click gesture
   await e.init((s) => usePlayer.setState({ engineStatus: s }));
   const t = getSettings().tts;
   if (isLive(e)) {
     e.speak(text, { voice, rate: t.speed, pitch: t.pitch, volume: t.volume }, { onWord() {}, onEnd() {}, onError() {} });
     return;
   }
-  await sink.ensureRunning();
+  await running;
   await sink.resume();
   const [lo, hi] = e.caps.speedRange;
   const r = await e.synthesize({ text, voice, speed: Math.min(hi, Math.max(lo, t.speed)), priority: -1 });
