@@ -174,8 +174,7 @@ export class Player {
       }
       if (this.playToken !== token) return;
       if (!start) {
-        this.setState("idle");
-        this.emitter.emit("ended");
+        this.fail(new Error("No readable text from here to the end. Scanned (image-only) PDFs need OCR before they can be read aloud."));
         return;
       }
       this.setPosition({ sentence: start.sentence, wordIdx: start.wordIdx });
