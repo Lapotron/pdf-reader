@@ -166,7 +166,24 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
   );
 }
 
-export function Dialog({ open, onClose, title, children, wide, footer }: { open: boolean; onClose(): void; title: ReactNode; children: ReactNode; wide?: boolean; footer?: ReactNode }) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  children,
+  wide,
+  footer,
+  bodyClassName = "min-h-0 flex-1 overflow-auto",
+}: {
+  open: boolean;
+  onClose(): void;
+  title: ReactNode;
+  children: ReactNode;
+  wide?: boolean;
+  footer?: ReactNode;
+  /** Classes for the body wrapper; pass a non-scrolling layout to manage scrolling inside. */
+  bodyClassName?: string;
+}) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -188,7 +205,7 @@ export function Dialog({ open, onClose, title, children, wide, footer }: { open:
             <X size={18} />
           </IconButton>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+        <div className={bodyClassName}>{children}</div>
         {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
       </div>
     </div>,

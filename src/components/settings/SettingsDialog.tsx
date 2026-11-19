@@ -738,16 +738,17 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
   const tab = useUi((s) => s.settingsTab);
   const setTab = (t: string) => useUi.setState({ settingsTab: t });
   return (
-    <Dialog open={open} onClose={onClose} title="Settings" wide>
-      <div className="flex min-h-[60vh] flex-col md:flex-row">
-        <nav aria-label="Settings sections" className="flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 md:w-48 md:flex-col md:border-b-0 md:border-r">
+    <Dialog open={open} onClose={onClose} title="Settings" wide bodyClassName="flex min-h-0 flex-1 overflow-hidden">
+      {/* Fixed height: the section list stays put while only the content pane scrolls. */}
+      <div className="flex h-[min(80vh,760px)] w-full flex-col md:flex-row">
+        <nav aria-label="Settings sections" data-testid="settings-nav" className="flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 md:w-48 md:flex-col md:overflow-y-auto md:overflow-x-visible md:border-b-0 md:border-r">
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id} className={cx("whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm", tab === t.id ? "bg-accent-soft text-accent" : "hover:bg-panel-2")}>
               {t.label}
             </button>
           ))}
         </nav>
-        <div className="min-w-0 flex-1">
+        <div key={tab} className="min-h-0 min-w-0 flex-1 overflow-y-auto" data-testid="settings-content">
           {tab === "voice" && <VoiceTab />}
           {tab === "reading" && <ReadingTab />}
           {tab === "ruler" && <RulerTab />}

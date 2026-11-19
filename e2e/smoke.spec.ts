@@ -159,3 +159,20 @@ test("Back to reading position returns to the spoken line and stays", async ({ p
   await page.waitForTimeout(1500);
   await expect(back).toBeHidden();
 });
+
+test("Settings section list stays in place while the content scrolls", async ({ page }) => {
+  await openFixture(page, "simple.pdf");
+  await page.getByTestId("open-settings").click();
+  const nav = page.getByTestId("settings-nav");
+  await nav.getByRole("button", { name: "Text cleanup" }).click();
+  const before = (await nav.boundingBox())!;
+  const content = page.getByTestId("settings-content");
+  await content.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  expect(await content.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+  const after = (await nav.boundingBox())!;
+  expect(after.y).toBe(before.y);
+  await expect(nav.getByRole("button", { name: "Voice & engine" })).toBeInViewport();
+  // Switching tabs starts at the top.
+  await nav.getByRole("button", { name: "Reading line" }).click();
+  expect(await page.getByTestId("settings-content").evaluate((el) => el.scrollTop)).toBe(0);
+});
